@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["actiserve"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.63.0/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"struct\" href=\"actiserve/statuses/struct.Status.html\" title=\"struct actiserve::statuses::Status\">Status</a>","synthetic":false,"types":["actiserve::statuses::Status"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
