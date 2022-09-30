@@ -1,3 +1,4 @@
-var sourcesIndex = {};
-sourcesIndex["actiserve"] = {"name":"","files":["constants.rs","main.rs","statuses.rs"]};
+var sourcesIndex = JSON.parse('{\
+"actiserve":["",[],["constants.rs","main.rs","statuses.rs"]]\
+}');
 createSourceSidebar();
