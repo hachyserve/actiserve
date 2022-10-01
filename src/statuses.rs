@@ -3,7 +3,9 @@ use std::sync::Mutex;
 
 use actix_web::web::{Json, Path};
 use actix_web::HttpResponse;
+use actix_web::{delete, get, post};
 use chrono::{DateTime, NaiveDateTime, Utc};
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -91,6 +93,7 @@ pub async fn create(req: Json<CreateStatusRequest>) -> HttpResponse {
 
 #[get("/api/v1/statuses/{id}")]
 pub async fn get(path: Path<String>) -> HttpResponse {
+    dbg!(&path);
     let id = path.into_inner();
     // TODO: unauthenticated error
     match STATUS_DB.lock().unwrap().get(&id) {
@@ -147,6 +150,7 @@ mod tests {
     use super::*;
     use actix_web::{body::to_bytes, http, test, App};
     use chrono::{TimeZone, Utc};
+    use serial_test::serial;
 
     #[actix_web::test]
     async fn test_create_ok() {
@@ -165,5 +169,63 @@ mod tests {
         let status: Status = serde_json::from_slice(&body_bytes).unwrap();
         assert_eq!(status.id, Uuid::nil().to_string());
         assert_eq!(status.created_at, Utc.timestamp(42, 0));
+
+        STATUS_DB.lock().unwrap().clear();
+    }
+
+    #[actix_web::test]
+    #[serial]
+    async fn test_get_ok() {
+        let app = test::init_service(App::new().service(create).service(get)).await;
+
+        {
+            // Create the status to get later
+            let req = test::TestRequest::post()
+                .uri("/api/v1/statuses")
+                .set_json(&CreateStatusRequest {
+                    status: String::from("hello world"),
+                })
+                .to_request();
+            let resp = test::call_service(&app, req).await;
+            assert_eq!(resp.status(), http::StatusCode::CREATED);
+
+            let body_bytes = to_bytes(resp.into_body()).await.unwrap();
+            let status: Status = serde_json::from_slice(&body_bytes).unwrap();
+            assert_eq!(status.id, Uuid::nil().to_string());
+            assert_eq!(status.created_at, Utc.timestamp(42, 0));
+        }
+
+        {
+            let req = test::TestRequest::get()
+                .uri(&format!("/api/v1/statuses/{}", Uuid::nil()))
+                .to_request();
+            let resp = test::call_service(&app, req).await;
+            assert_eq!(resp.status(), http::StatusCode::OK);
+
+            let body_bytes = to_bytes(resp.into_body()).await.unwrap();
+            let status: Status = serde_json::from_slice(&body_bytes).unwrap();
+            assert_eq!(status.id, Uuid::nil().to_string());
+            assert_eq!(status.created_at, Utc.timestamp(42, 0));
+        }
+
+        STATUS_DB.lock().unwrap().clear();
+    }
+
+    #[actix_web::test]
+    #[serial]
+    async fn test_get_not_found() {
+        let app = test::init_service(App::new().service(get)).await;
+
+        let req = test::TestRequest::get()
+            .uri(&format!("/api/v1/statuses/{}", Uuid::nil()))
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), http::StatusCode::NOT_FOUND);
+
+        let body_bytes = to_bytes(resp.into_body()).await.unwrap();
+        let error: Error = serde_json::from_slice(&body_bytes).unwrap();
+        assert_eq!(error.error, "Record not found");
+
+        STATUS_DB.lock().unwrap().clear();
     }
 }
