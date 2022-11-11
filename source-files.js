@@ -1,4 +1,4 @@
 var sourcesIndex = JSON.parse('{\
-"actiserve":["",[],["constants.rs","main.rs","statuses.rs"]]\
+"actiserve":["",[],["error.rs","main.rs","statuses.rs"]]\
 }');
 createSourceSidebar();

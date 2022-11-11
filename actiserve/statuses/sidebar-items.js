@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["CreateStatusRequest",""],["DeleteResponse",""],["Error",""],["STATUS_DB",""],["Status",""],["create",""],["delete",""],["get",""]]};
+window.SIDEBAR_ITEMS = {"fn":[["create",""],["delete",""],["get",""]],"struct":[["CreateStatusRequest",""],["DeleteResponse",""],["Status",""]]};

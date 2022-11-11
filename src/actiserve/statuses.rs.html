@@ -227,96 +227,20 @@
 <span id="227">227</span>
 <span id="228">228</span>
 <span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
-<span id="242">242</span>
-<span id="243">243</span>
-<span id="244">244</span>
-<span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
-<span id="252">252</span>
-<span id="253">253</span>
-<span id="254">254</span>
-<span id="255">255</span>
-<span id="256">256</span>
-<span id="257">257</span>
-<span id="258">258</span>
-<span id="259">259</span>
-<span id="260">260</span>
-<span id="261">261</span>
-<span id="262">262</span>
-<span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
-<span class="kw">use</span> <span class="ident">std::sync::Mutex</span>;
-
-<span class="kw">use</span> <span class="ident">actix_web::web</span>::{<span class="ident">Json</span>, <span class="ident">Path</span>};
-<span class="kw">use</span> <span class="ident">actix_web::HttpResponse</span>;
-<span class="kw">use</span> <span class="ident">actix_web</span>::{<span class="ident">delete</span>, <span class="ident">get</span>, <span class="ident">post</span>};
-<span class="kw">use</span> <span class="ident">chrono</span>::{<span class="ident">DateTime</span>, <span class="ident">NaiveDateTime</span>, <span class="ident">Utc</span>};
-<span class="kw">use</span> <span class="ident">lazy_static::lazy_static</span>;
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Error</span>, <span class="ident">State</span>};
+<span class="kw">use</span> <span class="ident">axum</span>::{
+    <span class="ident">extract</span>::{<span class="ident">Json</span>, <span class="ident">Path</span>},
+    <span class="ident">http::StatusCode</span>,
+    <span class="ident">response</span>::{<span class="ident">IntoResponse</span>, <span class="ident">Response</span>},
+    <span class="ident">Extension</span>,
+};
+<span class="kw">use</span> <span class="ident">chrono</span>::{<span class="ident">DateTime</span>, <span class="ident">Utc</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">tracing::debug</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::constants::APPLICATION_JSON</span>;
-
-<span class="macro">lazy_static!</span> {
-    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">STATUS_DB</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Status</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
-        <span class="ident">Mutex::new</span>(<span class="ident">m</span>)
-    };
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Error</span> {
-    <span class="kw">pub</span> <span class="ident">error</span>: <span class="ident">String</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">Error</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">error</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">Error</span> {
-            <span class="ident">error</span>: <span class="ident">error</span>.<span class="ident">to_string</span>(),
-        }
-    }
-}
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">use</span> <span class="ident">chrono::NaiveDateTime</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Status</span> {
@@ -330,14 +254,12 @@
 
 <span class="kw">impl</span> <span class="ident">Status</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">content</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-        <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">Uuid::nil</span>();
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">DateTime</span>::<span class="op">&lt;</span><span class="ident">Utc</span><span class="op">&gt;</span><span class="ident">::from_utc</span>(<span class="ident">NaiveDateTime::from_timestamp</span>(<span class="number">42</span>, <span class="number">0</span>), <span class="ident">Utc</span>);
-        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
+
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">test</span>))]</span>
         <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">Utc::now</span>();
+        <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+        <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">DateTime</span>::<span class="op">&lt;</span><span class="ident">Utc</span><span class="op">&gt;</span><span class="ident">::from_utc</span>(<span class="ident">NaiveDateTime::from_timestamp</span>(<span class="number">42</span>, <span class="number">0</span>), <span class="ident">Utc</span>);
 
         <span class="self">Self</span> {
             <span class="ident">id</span>: <span class="ident">id</span>.<span class="ident">to_string</span>(),
@@ -364,32 +286,29 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">post</span>(<span class="string">&quot;/api/v1/statuses&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">req</span>: <span class="ident">Json</span><span class="op">&lt;</span><span class="ident">CreateStatusRequest</span><span class="op">&gt;</span>) -&gt; <span class="ident">HttpResponse</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create</span>(
+    <span class="ident">Json</span>(<span class="ident">req</span>): <span class="ident">Json</span><span class="op">&lt;</span><span class="ident">CreateStatusRequest</span><span class="op">&gt;</span>,
+    <span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>,
+) -&gt; <span class="ident">Response</span> {
     <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">to_status</span>();
-    <span class="comment">// TODO: persistent store for the statuses</span>
-    <span class="ident">STATUS_DB</span>
+    <span class="macro">debug!</span>(<span class="ident">id</span> <span class="op">=</span> <span class="op">%</span><span class="ident">status</span>.<span class="ident">id</span>, <span class="string">&quot;storing status&quot;</span>);
+
+    <span class="ident">state</span>
         .<span class="ident">lock</span>()
         .<span class="ident">unwrap</span>()
         .<span class="ident">insert</span>(<span class="ident">status</span>.<span class="ident">id</span>.<span class="ident">clone</span>(), <span class="ident">status</span>.<span class="ident">clone</span>());
+
     <span class="comment">// TODO: send the status on to federated friends</span>
-    <span class="ident">HttpResponse::Created</span>()
-        .<span class="ident">content_type</span>(<span class="ident">APPLICATION_JSON</span>)
-        .<span class="ident">json</span>(<span class="ident">status</span>)
+    (<span class="ident">StatusCode::CREATED</span>, <span class="ident">Json</span>(<span class="ident">status</span>)).<span class="ident">into_response</span>()
 }
 
-<span class="attribute">#[<span class="ident">get</span>(<span class="string">&quot;/api/v1/statuses/{id}&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="ident">path</span>: <span class="ident">Path</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="ident">HttpResponse</span> {
-    <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>);
-    <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">path</span>.<span class="ident">into_inner</span>();
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="ident">Path</span>(<span class="ident">id</span>): <span class="ident">Path</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>) -&gt; <span class="ident">Response</span> {
+    <span class="macro">debug!</span>(<span class="op">%</span><span class="ident">id</span>, <span class="string">&quot;getting status with ID&quot;</span>);
+
     <span class="comment">// TODO: unauthenticated error</span>
-    <span class="kw">match</span> <span class="ident">STATUS_DB</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) {
-        <span class="prelude-val">Some</span>(<span class="ident">status</span>) =&gt; <span class="ident">HttpResponse::Ok</span>()
-            .<span class="ident">content_type</span>(<span class="ident">APPLICATION_JSON</span>)
-            .<span class="ident">json</span>(<span class="ident">status</span>),
-        <span class="prelude-val">None</span> =&gt; <span class="ident">HttpResponse::NotFound</span>()
-            .<span class="ident">content_type</span>(<span class="ident">APPLICATION_JSON</span>)
-            .<span class="ident">json</span>(<span class="ident">Error::new</span>(<span class="string">&quot;Record not found&quot;</span>)),
+    <span class="kw">match</span> <span class="ident">state</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) {
+        <span class="prelude-val">Some</span>(<span class="ident">status</span>) =&gt; <span class="ident">Json</span>(<span class="ident">status</span>.<span class="ident">clone</span>()).<span class="ident">into_response</span>(),
+        <span class="prelude-val">None</span> =&gt; <span class="ident">Error::StatusNotFound</span> { <span class="ident">id</span> }.<span class="ident">into_response</span>(),
     }
 }
 
@@ -418,158 +337,123 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">delete</span>(<span class="string">&quot;/api/v1/statuses/{id}&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="ident">path</span>: <span class="ident">Path</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="ident">HttpResponse</span> {
-    <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">path</span>.<span class="ident">into_inner</span>();
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="ident">Path</span>(<span class="ident">id</span>): <span class="ident">Path</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>) -&gt; <span class="ident">Response</span> {
+    <span class="macro">debug!</span>(<span class="op">%</span><span class="ident">id</span>, <span class="string">&quot;deleting status&quot;</span>);
+
     <span class="comment">// TODO: propagate deletion to federated instances</span>
-    <span class="kw">match</span> <span class="ident">STATUS_DB</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) {
-        <span class="prelude-val">Some</span>(<span class="ident">status</span>) =&gt; <span class="ident">HttpResponse::Ok</span>()
-            .<span class="ident">content_type</span>(<span class="ident">APPLICATION_JSON</span>)
-            .<span class="ident">json</span>(<span class="ident">DeleteResponse::new</span>(<span class="kw-2">&amp;</span><span class="ident">status</span>)),
-        <span class="prelude-val">None</span> =&gt; <span class="ident">HttpResponse::NotFound</span>()
-            .<span class="ident">content_type</span>(<span class="ident">APPLICATION_JSON</span>)
-            .<span class="ident">json</span>(<span class="ident">Error::new</span>(<span class="string">&quot;Record not found&quot;</span>)),
+    <span class="kw">match</span> <span class="ident">state</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) {
+        <span class="prelude-val">Some</span>(<span class="ident">status</span>) =&gt; <span class="ident">Json</span>(<span class="ident">DeleteResponse::new</span>(<span class="kw-2">&amp;</span><span class="ident">status</span>)).<span class="ident">into_response</span>(),
+        <span class="prelude-val">None</span> =&gt; <span class="ident">Error::StatusNotFound</span> { <span class="ident">id</span> }.<span class="ident">into_response</span>(),
     }
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">actix_web</span>::{<span class="ident">body::to_bytes</span>, <span class="ident">http</span>, <span class="ident">test</span>, <span class="ident">App</span>};
-    <span class="kw">use</span> <span class="ident">chrono</span>::{<span class="ident">TimeZone</span>, <span class="ident">Utc</span>};
-    <span class="kw">use</span> <span class="ident">serial_test::serial</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::build_routes</span>;
+    <span class="kw">use</span> <span class="ident">axum</span>::{
+        <span class="ident">body::Body</span>,
+        <span class="ident">http</span>::{<span class="self">self</span>, <span class="ident">Request</span>},
+    };
+    <span class="kw">use</span> <span class="ident">serde::de::DeserializeOwned</span>;
+    <span class="kw">use</span> <span class="ident">serde_json::json</span>;
+    <span class="kw">use</span> <span class="ident">std</span>::{
+        <span class="ident">collections::HashMap</span>,
+        <span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>},
+    };
+    <span class="kw">use</span> <span class="ident">tower::ServiceExt</span>; <span class="comment">// for `app.oneshot()`</span>
 
-    <span class="attribute">#[<span class="ident">actix_web::test</span>]</span>
+    <span class="kw">const</span> <span class="ident">CONTENT</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;hello world&quot;</span>;
+
+    <span class="kw">fn</span> <span class="ident">post_req</span>(<span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">body</span>: <span class="kw">impl</span> <span class="ident">Serialize</span>) -&gt; <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span> {
+        <span class="ident">Request::builder</span>()
+            .<span class="ident">method</span>(<span class="ident">http::Method::POST</span>)
+            .<span class="ident">uri</span>(<span class="ident">uri</span>)
+            .<span class="ident">header</span>(<span class="ident">http::header::CONTENT_TYPE</span>, <span class="string">&quot;application/json&quot;</span>)
+            .<span class="ident">body</span>(<span class="ident">Body::from</span>(<span class="ident">serde_json::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">body</span>).<span class="ident">unwrap</span>()))
+            .<span class="ident">unwrap</span>()
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_req</span>(<span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span> {
+        <span class="ident">Request::builder</span>().<span class="ident">uri</span>(<span class="ident">uri</span>).<span class="ident">body</span>(<span class="ident">Body::empty</span>()).<span class="ident">unwrap</span>()
+    }
+
+    <span class="kw">fn</span> <span class="ident">delete_req</span>(<span class="ident">uri</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">Body</span><span class="op">&gt;</span> {
+        <span class="ident">Request::builder</span>()
+            .<span class="ident">method</span>(<span class="ident">http::Method::DELETE</span>)
+            .<span class="ident">uri</span>(<span class="ident">uri</span>)
+            .<span class="ident">body</span>(<span class="ident">Body::empty</span>())
+            .<span class="ident">unwrap</span>()
+    }
+
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">from_body</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">DeserializeOwned</span><span class="op">&gt;</span>(<span class="ident">resp</span>: <span class="ident">Response</span>) -&gt; <span class="ident">T</span> {
+        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">hyper::body::to_bytes</span>(<span class="ident">resp</span>.<span class="ident">into_body</span>()).<span class="kw">await</span>.<span class="ident">unwrap</span>();
+        <span class="ident">serde_json::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">body</span>).<span class="ident">unwrap</span>()
+    }
+
+    <span class="comment">// TODO: allow for inserting multiple statuses</span>
+    <span class="kw">fn</span> <span class="ident">prepared_state</span>() -&gt; (<span class="ident">String</span>, <span class="ident">State</span>) {
+        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">Status::new</span>(<span class="ident">CONTENT</span>);
+        <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">id</span>.<span class="ident">clone</span>();
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
+        <span class="ident">state</span>.<span class="ident">insert</span>(<span class="ident">id</span>.<span class="ident">clone</span>(), <span class="ident">s</span>);
+
+        (<span class="ident">id</span>, <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">state</span>)))
+    }
+
+    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_create_ok</span>() {
-        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">test::init_service</span>(<span class="ident">App::new</span>().<span class="ident">service</span>(<span class="ident">create</span>)).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">build_routes</span>(<span class="ident">State::default</span>());
+        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">post_req</span>(<span class="string">&quot;/api/v1/statuses&quot;</span>, <span class="macro">json!</span>({ <span class="string">&quot;status&quot;</span>: <span class="string">&quot;hello world&quot;</span> }));
+        <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">app</span>.<span class="ident">oneshot</span>(<span class="ident">req</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
 
-        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">test::TestRequest::post</span>()
-            .<span class="ident">uri</span>(<span class="string">&quot;/api/v1/statuses&quot;</span>)
-            .<span class="ident">set_json</span>(<span class="kw-2">&amp;</span><span class="ident">CreateStatusRequest</span> {
-                <span class="ident">status</span>: <span class="ident">String::from</span>(<span class="string">&quot;hello world&quot;</span>),
-            })
-            .<span class="ident">to_request</span>();
-        <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">test::call_service</span>(<span class="kw-2">&amp;</span><span class="ident">app</span>, <span class="ident">req</span>).<span class="kw">await</span>;
-        <span class="macro">assert_eq!</span>(<span class="ident">resp</span>.<span class="ident">status</span>(), <span class="ident">http::StatusCode::CREATED</span>);
-
-        <span class="kw">let</span> <span class="ident">body_bytes</span> <span class="op">=</span> <span class="ident">to_bytes</span>(<span class="ident">resp</span>.<span class="ident">into_body</span>()).<span class="kw">await</span>.<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">status</span>: <span class="ident">Status</span> <span class="op">=</span> <span class="ident">serde_json::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">body_bytes</span>).<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">id</span>, <span class="ident">Uuid::nil</span>().<span class="ident">to_string</span>());
-        <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">created_at</span>, <span class="ident">Utc</span>.<span class="ident">timestamp</span>(<span class="number">42</span>, <span class="number">0</span>));
-
-        <span class="ident">STATUS_DB</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">clear</span>();
+        <span class="macro">assert_eq!</span>(<span class="ident">resp</span>.<span class="ident">status</span>(), <span class="ident">StatusCode::CREATED</span>);
     }
 
-    <span class="attribute">#[<span class="ident">actix_web::test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
+    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_get_ok</span>() {
-        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">test::init_service</span>(<span class="ident">App::new</span>().<span class="ident">service</span>(<span class="ident">create</span>).<span class="ident">service</span>(<span class="ident">get</span>)).<span class="kw">await</span>;
+        <span class="kw">let</span> (<span class="ident">id</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="ident">prepared_state</span>();
+        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">build_routes</span>(<span class="ident">state</span>);
+        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">get_req</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/api/v1/statuses/{id}&quot;</span>));
+        <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">app</span>.<span class="ident">oneshot</span>(<span class="ident">req</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
 
-        {
-            <span class="comment">// Create the status to get later</span>
-            <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">test::TestRequest::post</span>()
-                .<span class="ident">uri</span>(<span class="string">&quot;/api/v1/statuses&quot;</span>)
-                .<span class="ident">set_json</span>(<span class="kw-2">&amp;</span><span class="ident">CreateStatusRequest</span> {
-                    <span class="ident">status</span>: <span class="ident">String::from</span>(<span class="string">&quot;hello world&quot;</span>),
-                })
-                .<span class="ident">to_request</span>();
-            <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">test::call_service</span>(<span class="kw-2">&amp;</span><span class="ident">app</span>, <span class="ident">req</span>).<span class="kw">await</span>;
-            <span class="macro">assert_eq!</span>(<span class="ident">resp</span>.<span class="ident">status</span>(), <span class="ident">http::StatusCode::CREATED</span>);
+        <span class="kw">let</span> <span class="ident">status</span>: <span class="ident">Status</span> <span class="op">=</span> <span class="ident">from_body</span>(<span class="ident">resp</span>).<span class="kw">await</span>;
 
-            <span class="kw">let</span> <span class="ident">body_bytes</span> <span class="op">=</span> <span class="ident">to_bytes</span>(<span class="ident">resp</span>.<span class="ident">into_body</span>()).<span class="kw">await</span>.<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">status</span>: <span class="ident">Status</span> <span class="op">=</span> <span class="ident">serde_json::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">body_bytes</span>).<span class="ident">unwrap</span>();
-            <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">id</span>, <span class="ident">Uuid::nil</span>().<span class="ident">to_string</span>());
-            <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">created_at</span>, <span class="ident">Utc</span>.<span class="ident">timestamp</span>(<span class="number">42</span>, <span class="number">0</span>));
-        }
-
-        {
-            <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">test::TestRequest::get</span>()
-                .<span class="ident">uri</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/api/v1/statuses/{}&quot;</span>, <span class="ident">Uuid::nil</span>()))
-                .<span class="ident">to_request</span>();
-            <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">test::call_service</span>(<span class="kw-2">&amp;</span><span class="ident">app</span>, <span class="ident">req</span>).<span class="kw">await</span>;
-            <span class="macro">assert_eq!</span>(<span class="ident">resp</span>.<span class="ident">status</span>(), <span class="ident">http::StatusCode::OK</span>);
-
-            <span class="kw">let</span> <span class="ident">body_bytes</span> <span class="op">=</span> <span class="ident">to_bytes</span>(<span class="ident">resp</span>.<span class="ident">into_body</span>()).<span class="kw">await</span>.<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">status</span>: <span class="ident">Status</span> <span class="op">=</span> <span class="ident">serde_json::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">body_bytes</span>).<span class="ident">unwrap</span>();
-            <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">id</span>, <span class="ident">Uuid::nil</span>().<span class="ident">to_string</span>());
-            <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">created_at</span>, <span class="ident">Utc</span>.<span class="ident">timestamp</span>(<span class="number">42</span>, <span class="number">0</span>));
-        }
-
-        <span class="ident">STATUS_DB</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">clear</span>();
+        <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">id</span>, <span class="ident">id</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">content</span>, <span class="ident">CONTENT</span>);
     }
 
-    <span class="attribute">#[<span class="ident">actix_web::test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
+    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_get_not_found</span>() {
-        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">test::init_service</span>(<span class="ident">App::new</span>().<span class="ident">service</span>(<span class="ident">get</span>)).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">build_routes</span>(<span class="ident">Default::default</span>());
+        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">get_req</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/api/v1/statuses/{}&quot;</span>, <span class="ident">Uuid::nil</span>()));
+        <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">app</span>.<span class="ident">oneshot</span>(<span class="ident">req</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
 
-        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">test::TestRequest::get</span>()
-            .<span class="ident">uri</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/api/v1/statuses/{}&quot;</span>, <span class="ident">Uuid::nil</span>()))
-            .<span class="ident">to_request</span>();
-        <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">test::call_service</span>(<span class="kw-2">&amp;</span><span class="ident">app</span>, <span class="ident">req</span>).<span class="kw">await</span>;
-        <span class="macro">assert_eq!</span>(<span class="ident">resp</span>.<span class="ident">status</span>(), <span class="ident">http::StatusCode::NOT_FOUND</span>);
-
-        <span class="kw">let</span> <span class="ident">body_bytes</span> <span class="op">=</span> <span class="ident">to_bytes</span>(<span class="ident">resp</span>.<span class="ident">into_body</span>()).<span class="kw">await</span>.<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">error</span>: <span class="ident">Error</span> <span class="op">=</span> <span class="ident">serde_json::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">body_bytes</span>).<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">error</span>.<span class="ident">error</span>, <span class="string">&quot;Record not found&quot;</span>);
-
-        <span class="ident">STATUS_DB</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">clear</span>();
+        <span class="macro">assert_eq!</span>(<span class="ident">resp</span>.<span class="ident">status</span>(), <span class="ident">StatusCode::NOT_FOUND</span>);
     }
 
-    <span class="attribute">#[<span class="ident">actix_web::test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
+    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_delete_ok</span>() {
-        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">test::init_service</span>(<span class="ident">App::new</span>().<span class="ident">service</span>(<span class="ident">create</span>).<span class="ident">service</span>(<span class="ident">delete</span>)).<span class="kw">await</span>;
+        <span class="kw">let</span> (<span class="ident">id</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="ident">prepared_state</span>();
+        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">build_routes</span>(<span class="ident">state</span>);
+        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">delete_req</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/api/v1/statuses/{id}&quot;</span>));
+        <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">app</span>.<span class="ident">oneshot</span>(<span class="ident">req</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
 
-        {
-            <span class="comment">// Create the status to delete later</span>
-            <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">test::TestRequest::post</span>()
-                .<span class="ident">uri</span>(<span class="string">&quot;/api/v1/statuses&quot;</span>)
-                .<span class="ident">set_json</span>(<span class="kw-2">&amp;</span><span class="ident">CreateStatusRequest</span> {
-                    <span class="ident">status</span>: <span class="ident">String::from</span>(<span class="string">&quot;hello world&quot;</span>),
-                })
-                .<span class="ident">to_request</span>();
-            <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">test::call_service</span>(<span class="kw-2">&amp;</span><span class="ident">app</span>, <span class="ident">req</span>).<span class="kw">await</span>;
-            <span class="macro">assert_eq!</span>(<span class="ident">resp</span>.<span class="ident">status</span>(), <span class="ident">http::StatusCode::CREATED</span>);
+        <span class="kw">let</span> <span class="ident">status</span>: <span class="ident">DeleteResponse</span> <span class="op">=</span> <span class="ident">from_body</span>(<span class="ident">resp</span>).<span class="kw">await</span>;
 
-            <span class="kw">let</span> <span class="ident">body_bytes</span> <span class="op">=</span> <span class="ident">to_bytes</span>(<span class="ident">resp</span>.<span class="ident">into_body</span>()).<span class="kw">await</span>.<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">status</span>: <span class="ident">Status</span> <span class="op">=</span> <span class="ident">serde_json::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">body_bytes</span>).<span class="ident">unwrap</span>();
-            <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">id</span>, <span class="ident">Uuid::nil</span>().<span class="ident">to_string</span>());
-            <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">created_at</span>, <span class="ident">Utc</span>.<span class="ident">timestamp</span>(<span class="number">42</span>, <span class="number">0</span>));
-        }
-
-        {
-            <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">test::TestRequest::delete</span>()
-                .<span class="ident">uri</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/api/v1/statuses/{}&quot;</span>, <span class="ident">Uuid::nil</span>()))
-                .<span class="ident">to_request</span>();
-            <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">test::call_service</span>(<span class="kw-2">&amp;</span><span class="ident">app</span>, <span class="ident">req</span>).<span class="kw">await</span>;
-            <span class="macro">assert_eq!</span>(<span class="ident">resp</span>.<span class="ident">status</span>(), <span class="ident">http::StatusCode::OK</span>);
-
-            <span class="kw">let</span> <span class="ident">body_bytes</span> <span class="op">=</span> <span class="ident">to_bytes</span>(<span class="ident">resp</span>.<span class="ident">into_body</span>()).<span class="kw">await</span>.<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">status</span>: <span class="ident">Status</span> <span class="op">=</span> <span class="ident">serde_json::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">body_bytes</span>).<span class="ident">unwrap</span>();
-            <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">id</span>, <span class="ident">Uuid::nil</span>().<span class="ident">to_string</span>());
-            <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">created_at</span>, <span class="ident">Utc</span>.<span class="ident">timestamp</span>(<span class="number">42</span>, <span class="number">0</span>));
-        }
-
-        <span class="ident">STATUS_DB</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">clear</span>();
+        <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">status</span>.<span class="ident">id</span>, <span class="ident">id</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">status</span>.<span class="ident">content</span>, <span class="ident">CONTENT</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">status</span>.<span class="ident">text</span>, <span class="ident">CONTENT</span>);
     }
 
-    <span class="attribute">#[<span class="ident">actix_web::test</span>]</span>
-    <span class="attribute">#[<span class="ident">serial</span>]</span>
+    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_delete_not_found</span>() {
-        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">test::init_service</span>(<span class="ident">App::new</span>().<span class="ident">service</span>(<span class="ident">delete</span>)).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">build_routes</span>(<span class="ident">Default::default</span>());
+        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">delete_req</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/api/v1/statuses/{}&quot;</span>, <span class="ident">Uuid::nil</span>()));
+        <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">app</span>.<span class="ident">oneshot</span>(<span class="ident">req</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
 
-        <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">test::TestRequest::delete</span>()
-            .<span class="ident">uri</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/api/v1/statuses/{}&quot;</span>, <span class="ident">Uuid::nil</span>()))
-            .<span class="ident">to_request</span>();
-        <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">test::call_service</span>(<span class="kw-2">&amp;</span><span class="ident">app</span>, <span class="ident">req</span>).<span class="kw">await</span>;
-        <span class="macro">assert_eq!</span>(<span class="ident">resp</span>.<span class="ident">status</span>(), <span class="ident">http::StatusCode::NOT_FOUND</span>);
-
-        <span class="kw">let</span> <span class="ident">body_bytes</span> <span class="op">=</span> <span class="ident">to_bytes</span>(<span class="ident">resp</span>.<span class="ident">into_body</span>()).<span class="kw">await</span>.<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">error</span>: <span class="ident">Error</span> <span class="op">=</span> <span class="ident">serde_json::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">body_bytes</span>).<span class="ident">unwrap</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">error</span>.<span class="ident">error</span>, <span class="string">&quot;Record not found&quot;</span>);
-
-        <span class="ident">STATUS_DB</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">clear</span>();
+        <span class="macro">assert_eq!</span>(<span class="ident">resp</span>.<span class="ident">status</span>(), <span class="ident">StatusCode::NOT_FOUND</span>);
     }
 }
 </code></pre></div>
