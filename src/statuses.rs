@@ -202,9 +202,6 @@ mod tests {
         let resp = app.oneshot(req).await.unwrap();
 
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-
-        let err: Error = from_body(resp).await;
-        assert!(matches!(err, Error::StatusNotFound { .. }))
     }
 
     #[tokio::test]
@@ -228,8 +225,5 @@ mod tests {
         let resp = app.oneshot(req).await.unwrap();
 
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-
-        let err: Error = from_body(resp).await;
-        assert!(matches!(err, Error::StatusNotFound { .. }))
     }
 }
