@@ -4,7 +4,6 @@ use axum::{
 };
 use std::{
     collections::HashMap,
-    env,
     net::SocketAddr,
     panic,
     sync::{Arc, Mutex},
@@ -25,7 +24,6 @@ pub type State = Arc<Mutex<HashMap<String, Status>>>;
 
 #[tokio::main]
 async fn main() {
-    env::set_var("RUST_LOG", "actix_web=debug,actix_server=debug");
     subscriber::set_global_default(
         tracing_subscriber::fmt()
             .json()

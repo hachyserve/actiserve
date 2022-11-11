@@ -4,6 +4,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 #[derive(Debug, Clone, thiserror::Error, Serialize, Deserialize)]
 pub enum Error {
@@ -16,7 +17,10 @@ impl IntoResponse for Error {
         use Error::*;
 
         let (status, data) = match self {
-            StatusNotFound { .. } => (StatusCode::NOT_FOUND, Json(self)),
+            StatusNotFound { .. } => (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "Record not found"})),
+            ),
         };
 
         (status, data).into_response()
