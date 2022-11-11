@@ -1,35 +1,17 @@
-use std::collections::HashMap;
-use std::sync::Mutex;
-
-use actix_web::web::{Json, Path};
-use actix_web::HttpResponse;
-use actix_web::{delete, get, post};
-use chrono::{DateTime, NaiveDateTime, Utc};
-use lazy_static::lazy_static;
+use crate::{Error, State};
+use axum::{
+    extract::{Json, Path},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Extension,
+};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 use uuid::Uuid;
 
-use crate::constants::APPLICATION_JSON;
-
-lazy_static! {
-    static ref STATUS_DB: Mutex<HashMap<String, Status>> = {
-        let m = HashMap::new();
-        Mutex::new(m)
-    };
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Error {
-    pub error: String,
-}
-
-impl Error {
-    fn new(error: &str) -> Self {
-        Error {
-            error: error.to_string(),
-        }
-    }
-}
+#[cfg(test)]
+use chrono::NaiveDateTime;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Status {
@@ -43,14 +25,12 @@ pub struct Status {
 
 impl Status {
     pub fn new(content: &str) -> Self {
-        #[cfg(test)]
-        let id = Uuid::nil();
-        #[cfg(test)]
-        let now = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(42, 0), Utc);
-        #[cfg(not(test))]
         let id = Uuid::new_v4();
+
         #[cfg(not(test))]
         let now = Utc::now();
+        #[cfg(test)]
+        let now = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(42, 0), Utc);
 
         Self {
             id: id.to_string(),
@@ -77,32 +57,29 @@ impl CreateStatusRequest {
     }
 }
 
-#[post("/api/v1/statuses")]
-pub async fn create(req: Json<CreateStatusRequest>) -> HttpResponse {
+pub async fn create(
+    Json(req): Json<CreateStatusRequest>,
+    Extension(state): Extension<State>,
+) -> Response {
     let status = req.to_status();
-    // TODO: persistent store for the statuses
-    STATUS_DB
+    debug!(id = %status.id, "storing status");
+
+    state
         .lock()
         .unwrap()
         .insert(status.id.clone(), status.clone());
+
     // TODO: send the status on to federated friends
-    HttpResponse::Created()
-        .content_type(APPLICATION_JSON)
-        .json(status)
+    (StatusCode::CREATED, Json(status)).into_response()
 }
 
-#[get("/api/v1/statuses/{id}")]
-pub async fn get(path: Path<String>) -> HttpResponse {
-    dbg!(&path);
-    let id = path.into_inner();
+pub async fn get(Path(id): Path<String>, Extension(state): Extension<State>) -> Response {
+    debug!(%id, "getting status with ID");
+
     // TODO: unauthenticated error
-    match STATUS_DB.lock().unwrap().get(&id) {
-        Some(status) => HttpResponse::Ok()
-            .content_type(APPLICATION_JSON)
-            .json(status),
-        None => HttpResponse::NotFound()
-            .content_type(APPLICATION_JSON)
-            .json(Error::new("Record not found")),
+    match state.lock().unwrap().get(&id) {
+        Some(status) => Json(status.clone()).into_response(),
+        None => Error::StatusNotFound { id }.into_response(),
     }
 }
 
@@ -131,157 +108,122 @@ impl std::ops::Deref for DeleteResponse {
     }
 }
 
-#[delete("/api/v1/statuses/{id}")]
-pub async fn delete(path: Path<String>) -> HttpResponse {
-    let id = path.into_inner();
+pub async fn delete(Path(id): Path<String>, Extension(state): Extension<State>) -> Response {
+    debug!(%id, "deleting status");
+
     // TODO: propagate deletion to federated instances
-    match STATUS_DB.lock().unwrap().remove(&id) {
-        Some(status) => HttpResponse::Ok()
-            .content_type(APPLICATION_JSON)
-            .json(DeleteResponse::new(&status)),
-        None => HttpResponse::NotFound()
-            .content_type(APPLICATION_JSON)
-            .json(Error::new("Record not found")),
+    match state.lock().unwrap().remove(&id) {
+        Some(status) => Json(DeleteResponse::new(&status)).into_response(),
+        None => Error::StatusNotFound { id }.into_response(),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::{body::to_bytes, http, test, App};
-    use chrono::{TimeZone, Utc};
-    use serial_test::serial;
+    use crate::build_routes;
+    use axum::{
+        body::Body,
+        http::{self, Request},
+    };
+    use serde::de::DeserializeOwned;
+    use serde_json::json;
+    use std::{
+        collections::HashMap,
+        sync::{Arc, Mutex},
+    };
+    use tower::ServiceExt; // for `app.oneshot()`
 
-    #[actix_web::test]
+    const CONTENT: &str = "hello world";
+
+    fn post_req(uri: &str, body: impl Serialize) -> Request<Body> {
+        Request::builder()
+            .method(http::Method::POST)
+            .uri(uri)
+            .header(http::header::CONTENT_TYPE, "application/json")
+            .body(Body::from(serde_json::to_vec(&body).unwrap()))
+            .unwrap()
+    }
+
+    fn get_req(uri: &str) -> Request<Body> {
+        Request::builder().uri(uri).body(Body::empty()).unwrap()
+    }
+
+    fn delete_req(uri: &str) -> Request<Body> {
+        Request::builder()
+            .method(http::Method::DELETE)
+            .uri(uri)
+            .body(Body::empty())
+            .unwrap()
+    }
+
+    async fn from_body<T: DeserializeOwned>(resp: Response) -> T {
+        let body = hyper::body::to_bytes(resp.into_body()).await.unwrap();
+        serde_json::from_slice(&body).unwrap()
+    }
+
+    // TODO: allow for inserting multiple statuses
+    fn prepared_state() -> (String, State) {
+        let s = Status::new(CONTENT);
+        let id = s.id.clone();
+
+        let mut state = HashMap::new();
+        state.insert(id.clone(), s);
+
+        (id, Arc::new(Mutex::new(state)))
+    }
+
+    #[tokio::test]
     async fn test_create_ok() {
-        let app = test::init_service(App::new().service(create)).await;
+        let app = build_routes(State::default());
+        let req = post_req("/api/v1/statuses", json!({ "status": "hello world" }));
+        let resp = app.oneshot(req).await.unwrap();
 
-        let req = test::TestRequest::post()
-            .uri("/api/v1/statuses")
-            .set_json(&CreateStatusRequest {
-                status: String::from("hello world"),
-            })
-            .to_request();
-        let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), http::StatusCode::CREATED);
-
-        let body_bytes = to_bytes(resp.into_body()).await.unwrap();
-        let status: Status = serde_json::from_slice(&body_bytes).unwrap();
-        assert_eq!(status.id, Uuid::nil().to_string());
-        assert_eq!(status.created_at, Utc.timestamp(42, 0));
-
-        STATUS_DB.lock().unwrap().clear();
+        assert_eq!(resp.status(), StatusCode::CREATED);
     }
 
-    #[actix_web::test]
-    #[serial]
+    #[tokio::test]
     async fn test_get_ok() {
-        let app = test::init_service(App::new().service(create).service(get)).await;
+        let (id, state) = prepared_state();
+        let app = build_routes(state);
+        let req = get_req(&format!("/api/v1/statuses/{id}"));
+        let resp = app.oneshot(req).await.unwrap();
 
-        {
-            // Create the status to get later
-            let req = test::TestRequest::post()
-                .uri("/api/v1/statuses")
-                .set_json(&CreateStatusRequest {
-                    status: String::from("hello world"),
-                })
-                .to_request();
-            let resp = test::call_service(&app, req).await;
-            assert_eq!(resp.status(), http::StatusCode::CREATED);
+        let status: Status = from_body(resp).await;
 
-            let body_bytes = to_bytes(resp.into_body()).await.unwrap();
-            let status: Status = serde_json::from_slice(&body_bytes).unwrap();
-            assert_eq!(status.id, Uuid::nil().to_string());
-            assert_eq!(status.created_at, Utc.timestamp(42, 0));
-        }
-
-        {
-            let req = test::TestRequest::get()
-                .uri(&format!("/api/v1/statuses/{}", Uuid::nil()))
-                .to_request();
-            let resp = test::call_service(&app, req).await;
-            assert_eq!(resp.status(), http::StatusCode::OK);
-
-            let body_bytes = to_bytes(resp.into_body()).await.unwrap();
-            let status: Status = serde_json::from_slice(&body_bytes).unwrap();
-            assert_eq!(status.id, Uuid::nil().to_string());
-            assert_eq!(status.created_at, Utc.timestamp(42, 0));
-        }
-
-        STATUS_DB.lock().unwrap().clear();
+        assert_eq!(status.id, id);
+        assert_eq!(status.content, CONTENT);
     }
 
-    #[actix_web::test]
-    #[serial]
+    #[tokio::test]
     async fn test_get_not_found() {
-        let app = test::init_service(App::new().service(get)).await;
+        let app = build_routes(Default::default());
+        let req = get_req(&format!("/api/v1/statuses/{}", Uuid::nil()));
+        let resp = app.oneshot(req).await.unwrap();
 
-        let req = test::TestRequest::get()
-            .uri(&format!("/api/v1/statuses/{}", Uuid::nil()))
-            .to_request();
-        let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), http::StatusCode::NOT_FOUND);
-
-        let body_bytes = to_bytes(resp.into_body()).await.unwrap();
-        let error: Error = serde_json::from_slice(&body_bytes).unwrap();
-        assert_eq!(error.error, "Record not found");
-
-        STATUS_DB.lock().unwrap().clear();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 
-    #[actix_web::test]
-    #[serial]
+    #[tokio::test]
     async fn test_delete_ok() {
-        let app = test::init_service(App::new().service(create).service(delete)).await;
+        let (id, state) = prepared_state();
+        let app = build_routes(state);
+        let req = delete_req(&format!("/api/v1/statuses/{id}"));
+        let resp = app.oneshot(req).await.unwrap();
 
-        {
-            // Create the status to delete later
-            let req = test::TestRequest::post()
-                .uri("/api/v1/statuses")
-                .set_json(&CreateStatusRequest {
-                    status: String::from("hello world"),
-                })
-                .to_request();
-            let resp = test::call_service(&app, req).await;
-            assert_eq!(resp.status(), http::StatusCode::CREATED);
+        let status: DeleteResponse = from_body(resp).await;
 
-            let body_bytes = to_bytes(resp.into_body()).await.unwrap();
-            let status: Status = serde_json::from_slice(&body_bytes).unwrap();
-            assert_eq!(status.id, Uuid::nil().to_string());
-            assert_eq!(status.created_at, Utc.timestamp(42, 0));
-        }
-
-        {
-            let req = test::TestRequest::delete()
-                .uri(&format!("/api/v1/statuses/{}", Uuid::nil()))
-                .to_request();
-            let resp = test::call_service(&app, req).await;
-            assert_eq!(resp.status(), http::StatusCode::OK);
-
-            let body_bytes = to_bytes(resp.into_body()).await.unwrap();
-            let status: Status = serde_json::from_slice(&body_bytes).unwrap();
-            assert_eq!(status.id, Uuid::nil().to_string());
-            assert_eq!(status.created_at, Utc.timestamp(42, 0));
-        }
-
-        STATUS_DB.lock().unwrap().clear();
+        assert_eq!(status.status.id, id);
+        assert_eq!(status.status.content, CONTENT);
+        assert_eq!(status.text, CONTENT);
     }
 
-    #[actix_web::test]
-    #[serial]
+    #[tokio::test]
     async fn test_delete_not_found() {
-        let app = test::init_service(App::new().service(delete)).await;
+        let app = build_routes(Default::default());
+        let req = delete_req(&format!("/api/v1/statuses/{}", Uuid::nil()));
+        let resp = app.oneshot(req).await.unwrap();
 
-        let req = test::TestRequest::delete()
-            .uri(&format!("/api/v1/statuses/{}", Uuid::nil()))
-            .to_request();
-        let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), http::StatusCode::NOT_FOUND);
-
-        let body_bytes = to_bytes(resp.into_body()).await.unwrap();
-        let error: Error = serde_json::from_slice(&body_bytes).unwrap();
-        assert_eq!(error.error, "Record not found");
-
-        STATUS_DB.lock().unwrap().clear();
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
     }
 }
