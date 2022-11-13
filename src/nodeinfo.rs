@@ -19,7 +19,7 @@ pub async fn get(Extension(state): Extension<State>) -> impl IntoResponse {
 }
 
 /// NodeInfo schema version 2.0
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeInfo {
     version: &'static str,
@@ -47,7 +47,7 @@ impl NodeInfo {
 }
 
 /// Metadata about server software in use.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Software {
     name: &'static str,
     version: &'static str,
@@ -63,7 +63,7 @@ impl Software {
 }
 
 /// Protocols that can be supported on this server.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Protocol {
     ActivityPub,
@@ -82,14 +82,14 @@ pub enum Protocol {
 //       empty array for both of these. (If we are, then what services do we want to support?)
 
 /// The third party sites this server can connect to via their application API.
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Services {
     inbound: Vec<InboundService>,
     outbound: Vec<OutboundService>,
 }
 
 /// The third party sites this server can retrieve messages from for combined display with regular traffic.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum InboundService {
     #[serde(rename = "atom1.0")]
@@ -104,7 +104,7 @@ pub enum InboundService {
     Twitter, // rip
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OutboundService {
     #[serde(rename = "atom1.0")]
@@ -143,7 +143,7 @@ pub enum OutboundService {
 //       more later once more of the server is implemented.
 
 /// Usage statistics for this server
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageStats {
     users: UserStats,
@@ -161,7 +161,7 @@ impl UsageStats {
 }
 
 /// Statistics about the users of this server
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserStats {
     total: u32,
