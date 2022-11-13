@@ -19,6 +19,11 @@ use statuses::Status;
 
 const PORT: u16 = 4242;
 
+/// Lookup our base url from the environment or default to localhost:4242
+pub fn base_url() -> &'static str {
+    option_env!("BASE_URL").unwrap_or("127.0.0.1:4242")
+}
+
 // TODO: persistent store for the statuses
 pub type State = Arc<Mutex<HashMap<String, Status>>>;
 

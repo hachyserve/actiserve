@@ -7,13 +7,15 @@ use axum::{extract::Json, http::header, response::IntoResponse, Extension};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-const NODE_INFO_HEADER: [(header::HeaderName, &str); 1] = [(
-    header::CONTENT_TYPE,
-    "application/json; profile=http://nodeinfo.diaspora.software/ns/schema/2.0#,",
-)];
+pub const NODE_INFO_SCHEMA: &str = "http://nodeinfo.diaspora.software/ns/schema/2.0";
 
 pub async fn get(Extension(state): Extension<State>) -> impl IntoResponse {
-    (NODE_INFO_HEADER, Json(NodeInfo::new(&state)))
+    let headers = [(
+        header::CONTENT_TYPE,
+        format!("application/json; profile={NODE_INFO_SCHEMA}#,"),
+    )];
+
+    (headers, Json(NodeInfo::new(&state)))
 }
 
 /// NodeInfo schema version 2.0
