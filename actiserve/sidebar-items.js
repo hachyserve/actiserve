@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":[["PORT",""]],"enum":[["Error",""]],"fn":[["build_routes",""],["main",""],["run_server",""]],"mod":[["error",""],["statuses",""]],"type":[["State",""]]};
+window.SIDEBAR_ITEMS = {"constant":[["PORT",""]],"enum":[["Error",""]],"fn":[["base_url","Lookup our base url from the environment or default to localhost:4242"],["main",""],["run_server",""]],"mod":[["error",""],["nodeinfo","Support for providing nodeinfo on /nodeinfo/2.0"],["routes","Routes available on this server."],["statuses",""]],"type":[["State",""]]};

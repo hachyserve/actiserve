@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":[["host_meta",""],["nodeinfo",""]]};
