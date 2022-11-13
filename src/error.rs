@@ -10,14 +10,23 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]
 pub enum Error {
-    #[error("Webfinger resource should begin with 'acct:', got '{resource}'")]
+    #[error("'{uri}' is not a valid uri")]
+    InvalidUri { uri: String },
+
+    #[error("webfinger resource should begin with 'acct:', got '{resource}'")]
     MalformedWebfingerResource { resource: String },
 
-    #[error("Webfinger uri should be of the form 'account@domain', got '{uri}'")]
+    #[error("webfinger uri should be of the form 'account@domain', got '{uri}'")]
     MalformedWebfingerUri { uri: String },
 
-    #[error("Record not found: {id}")]
+    #[error("missing signature")]
+    MissingSignature,
+
+    #[error("record not found")]
     StatusNotFound { id: String },
+
+    #[error("user not found")]
+    UnknownUser { user: String },
 }
 
 impl IntoResponse for Error {
@@ -27,6 +36,11 @@ impl IntoResponse for Error {
         let error = self.to_string();
 
         let (status, data) = match self {
+            InvalidUri { uri } => (
+                StatusCode::UNAUTHORIZED,
+                Json(json!({ "error": error, "uri": uri })),
+            ),
+
             MalformedWebfingerResource { resource } => (
                 StatusCode::BAD_REQUEST,
                 Json(json!({
@@ -43,9 +57,16 @@ impl IntoResponse for Error {
                 })),
             ),
 
+            MissingSignature => (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
+
             StatusNotFound { id } => (
                 StatusCode::NOT_FOUND,
                 Json(json!({ "error": error, "id": id })),
+            ),
+
+            UnknownUser { user } => (
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": error, "user": user })),
             ),
         };
 

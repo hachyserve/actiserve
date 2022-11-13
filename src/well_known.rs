@@ -1,5 +1,9 @@
-use crate::{base_url, nodeinfo::NODE_INFO_SCHEMA, Error, Jrd, Result};
-use axum::{extract::Query, http::header, response::IntoResponse};
+use crate::{base_url, extractors::Jrd, nodeinfo::NODE_INFO_SCHEMA, Error, Result};
+use axum::{
+    extract::{Host, Query},
+    http::header,
+    response::IntoResponse,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -17,17 +21,14 @@ pub async fn host_meta() -> impl IntoResponse {
 }
 
 pub async fn nodeinfo() -> Jrd<Value> {
-    let base = base_url();
-    let body = json!({
+    Jrd(json!({
         "links": [
             {
                 "rel": NODE_INFO_SCHEMA,
-                "href": format!("{base}/nodeinfo/2.0"),
+                "href": format!("{}/nodeinfo/2.0", base_url()),
             }
         ]
-    });
-
-    Jrd(body)
+    }))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,19 +53,29 @@ pub struct Params {
 }
 
 // https://tools.ietf.org/html/rfc7033
-pub async fn webfinger(Query(Params { resource }): Query<Params>) -> Result<Jrd<Resource>> {
-    let (username, domain) = parse_webfinger_resource(&resource)?;
-    let href = get_href(username, domain);
-    let aliases = get_aliases(username, domain);
+pub async fn webfinger(
+    Host(host): Host,
+    Query(Params { resource }): Query<Params>,
+) -> Result<Jrd<Resource>> {
+    let (user, domain) = parse_webfinger_resource(&resource)?;
+
+    if user != "relay" || domain != host {
+        return Err(Error::UnknownUser {
+            user: user.to_owned(),
+        });
+    }
+
+    let href = format!("{}/actor", base_url());
 
     Ok(Jrd(Resource {
-        aliases,
+        aliases: vec![href.clone()],
         subject: resource.clone(),
         links: vec![
             Link {
                 href: href.clone(),
-                rel: "https://webfinger.net/rel/profile-page".to_owned(),
-                ty: "application/activity+json".to_owned(),
+                rel: "self".to_owned(),
+                ty: r#"application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\""#
+                    .to_owned(),
             },
             Link {
                 href,
@@ -73,16 +84,6 @@ pub async fn webfinger(Query(Params { resource }): Query<Params>) -> Result<Jrd<
             },
         ],
     }))
-}
-
-// FIXME: actually look up the details
-fn get_href(_username: &str, domain: &str) -> String {
-    format!("https://{domain}/actor")
-}
-
-// FIXME: actually look up the details
-fn get_aliases(_username: &str, _domain: &str) -> Vec<String> {
-    vec![]
 }
 
 // parse a resource param of the form: /.well-known/webfinger?resource=acct:bob@my-example.com
@@ -104,10 +105,10 @@ fn parse_webfinger_resource(resource: &str) -> Result<(&str, &str)> {
         });
     };
 
-    let username = parts[0];
+    let user = parts[0];
     let domain = parts[1];
 
-    Ok((username, domain))
+    Ok((user, domain))
 }
 
 #[cfg(test)]

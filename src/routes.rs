@@ -6,9 +6,10 @@ use axum::{
     routing::{delete, get, post},
     Extension, Router,
 };
+use std::sync::Arc;
 
 // TODO: remove statuses endpoints
-pub(crate) fn build_routes(state: State) -> Router {
+pub(crate) fn build_routes(state: Arc<State>) -> Router {
     Router::new()
         // .route("/inbox", post(inbox::post))
         .route("/.well-known/webfinger", get(well_known::webfinger))

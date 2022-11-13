@@ -7,6 +7,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tracing::debug;
 use uuid::Uuid;
 
@@ -59,26 +60,23 @@ impl CreateStatusRequest {
 
 pub async fn create(
     Json(req): Json<CreateStatusRequest>,
-    Extension(state): Extension<State>,
+    Extension(state): Extension<Arc<State>>,
 ) -> Response {
     let status = req.to_status();
     debug!(id = %status.id, "storing status");
 
-    state
-        .lock()
-        .unwrap()
-        .insert(status.id.clone(), status.clone());
+    state.db.insert(status.id.clone(), status.clone());
 
     // TODO: send the status on to federated friends
     (StatusCode::CREATED, Json(status)).into_response()
 }
 
-pub async fn get(Path(id): Path<String>, Extension(state): Extension<State>) -> Response {
+pub async fn get(Path(id): Path<String>, Extension(state): Extension<Arc<State>>) -> Response {
     debug!(%id, "getting status with ID");
 
     // TODO: unauthenticated error
-    match state.lock().unwrap().get(&id) {
-        Some(status) => Json(status.clone()).into_response(),
+    match state.db.get(&id) {
+        Some(status) => Json(status).into_response(),
         None => Error::StatusNotFound { id }.into_response(),
     }
 }
@@ -108,11 +106,11 @@ impl std::ops::Deref for DeleteResponse {
     }
 }
 
-pub async fn delete(Path(id): Path<String>, Extension(state): Extension<State>) -> Response {
+pub async fn delete(Path(id): Path<String>, Extension(state): Extension<Arc<State>>) -> Response {
     debug!(%id, "deleting status");
 
     // TODO: propagate deletion to federated instances
-    match state.lock().unwrap().remove(&id) {
+    match state.db.remove(&id) {
         Some(status) => Json(DeleteResponse::new(&status)).into_response(),
         None => Error::StatusNotFound { id }.into_response(),
     }
@@ -128,10 +126,7 @@ mod tests {
     };
     use serde::de::DeserializeOwned;
     use serde_json::json;
-    use std::{
-        collections::HashMap,
-        sync::{Arc, Mutex},
-    };
+    use std::sync::Arc;
     use tower::ServiceExt; // for `app.oneshot()`
 
     const CONTENT: &str = "hello world";
@@ -163,19 +158,19 @@ mod tests {
     }
 
     // TODO: allow for inserting multiple statuses
-    fn prepared_state() -> (String, State) {
+    fn prepared_state() -> (String, Arc<State>) {
         let s = Status::new(CONTENT);
         let id = s.id.clone();
 
-        let mut state = HashMap::new();
-        state.insert(id.clone(), s);
+        let state = State::default();
+        state.db.insert(id.clone(), s);
 
-        (id, Arc::new(Mutex::new(state)))
+        (id, Arc::new(state))
     }
 
     #[tokio::test]
     async fn test_create_ok() {
-        let app = build_routes(State::default());
+        let app = build_routes(Arc::new(State::default()));
         let req = post_req("/api/v1/statuses", json!({ "status": "hello world" }));
         let resp = app.oneshot(req).await.unwrap();
 
