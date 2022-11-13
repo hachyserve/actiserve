@@ -1,4 +1,9 @@
-use axum::Server;
+use axum::{
+    http::{header, StatusCode},
+    response::{IntoResponse, Response},
+    Server,
+};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -12,8 +17,9 @@ mod error;
 mod nodeinfo;
 mod routes;
 mod statuses;
+mod well_known;
 
-pub use error::Error;
+pub use error::{Error, Result};
 use routes::build_routes;
 use statuses::Status;
 
@@ -22,6 +28,27 @@ const PORT: u16 = 4242;
 /// Lookup our base url from the environment or default to localhost:4242
 pub fn base_url() -> &'static str {
     option_env!("BASE_URL").unwrap_or("127.0.0.1:4242")
+}
+
+/// A helper for returning a JSON jrd document with the correct content header
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Jrd<T>(pub T);
+
+impl<T> IntoResponse for Jrd<T>
+where
+    T: Serialize,
+{
+    fn into_response(self) -> Response {
+        match serde_json::to_string(&self.0) {
+            Ok(s) => ([(header::CONTENT_TYPE, "application/jrd+json")], s).into_response(),
+            Err(err) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                [(header::CONTENT_TYPE, "text/plain;charset=UTF-8")],
+                err.to_string(),
+            )
+                .into_response(),
+        }
+    }
 }
 
 // TODO: persistent store for the statuses
