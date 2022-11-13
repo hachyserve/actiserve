@@ -1,7 +1,4 @@
-use axum::{
-    routing::{delete, get, post},
-    Extension, Router, Server,
-};
+use axum::Server;
 use std::{
     collections::HashMap,
     net::SocketAddr,
@@ -12,12 +9,20 @@ use tracing::{error, info, subscriber};
 use tracing_subscriber::EnvFilter;
 
 mod error;
+mod nodeinfo;
+mod routes;
 mod statuses;
 
 pub use error::Error;
+use routes::build_routes;
 use statuses::Status;
 
 const PORT: u16 = 4242;
+
+/// Lookup our base url from the environment or default to localhost:4242
+pub fn base_url() -> &'static str {
+    option_env!("BASE_URL").unwrap_or("127.0.0.1:4242")
+}
 
 // TODO: persistent store for the statuses
 pub type State = Arc<Mutex<HashMap<String, Status>>>;
@@ -47,14 +52,6 @@ async fn main() {
     }));
 
     run_server().await
-}
-
-pub(crate) fn build_routes(state: State) -> Router {
-    Router::new()
-        .route("/api/v1/statuses", post(statuses::create))
-        .route("/api/v1/statuses/:id", get(statuses::get))
-        .route("/api/v1/statuses/:id", delete(statuses::delete))
-        .layer(Extension(state))
 }
 
 async fn run_server() {
