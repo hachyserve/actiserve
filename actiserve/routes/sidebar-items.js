@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["build_routes",""]],"mod":[["well_known",""]]};
+window.SIDEBAR_ITEMS = {"fn":[["build_routes",""]]};

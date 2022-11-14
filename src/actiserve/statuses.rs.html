@@ -222,11 +222,6 @@
 <span id="222">222</span>
 <span id="223">223</span>
 <span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Error</span>, <span class="ident">State</span>};
 <span class="kw">use</span> <span class="ident">axum</span>::{
     <span class="ident">extract</span>::{<span class="ident">Json</span>, <span class="ident">Path</span>},
@@ -236,6 +231,7 @@
 };
 <span class="kw">use</span> <span class="ident">chrono</span>::{<span class="ident">DateTime</span>, <span class="ident">Utc</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tracing::debug</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
@@ -288,26 +284,23 @@
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create</span>(
     <span class="ident">Json</span>(<span class="ident">req</span>): <span class="ident">Json</span><span class="op">&lt;</span><span class="ident">CreateStatusRequest</span><span class="op">&gt;</span>,
-    <span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>,
+    <span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 ) -&gt; <span class="ident">Response</span> {
     <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">to_status</span>();
     <span class="macro">debug!</span>(<span class="ident">id</span> <span class="op">=</span> <span class="op">%</span><span class="ident">status</span>.<span class="ident">id</span>, <span class="string">&quot;storing status&quot;</span>);
 
-    <span class="ident">state</span>
-        .<span class="ident">lock</span>()
-        .<span class="ident">unwrap</span>()
-        .<span class="ident">insert</span>(<span class="ident">status</span>.<span class="ident">id</span>.<span class="ident">clone</span>(), <span class="ident">status</span>.<span class="ident">clone</span>());
+    <span class="ident">state</span>.<span class="ident">db</span>.<span class="ident">insert</span>(<span class="ident">status</span>.<span class="ident">id</span>.<span class="ident">clone</span>(), <span class="ident">status</span>.<span class="ident">clone</span>());
 
     <span class="comment">// TODO: send the status on to federated friends</span>
     (<span class="ident">StatusCode::CREATED</span>, <span class="ident">Json</span>(<span class="ident">status</span>)).<span class="ident">into_response</span>()
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="ident">Path</span>(<span class="ident">id</span>): <span class="ident">Path</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>) -&gt; <span class="ident">Response</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="ident">Path</span>(<span class="ident">id</span>): <span class="ident">Path</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">Response</span> {
     <span class="macro">debug!</span>(<span class="op">%</span><span class="ident">id</span>, <span class="string">&quot;getting status with ID&quot;</span>);
 
     <span class="comment">// TODO: unauthenticated error</span>
-    <span class="kw">match</span> <span class="ident">state</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) {
-        <span class="prelude-val">Some</span>(<span class="ident">status</span>) =&gt; <span class="ident">Json</span>(<span class="ident">status</span>.<span class="ident">clone</span>()).<span class="ident">into_response</span>(),
+    <span class="kw">match</span> <span class="ident">state</span>.<span class="ident">db</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) {
+        <span class="prelude-val">Some</span>(<span class="ident">status</span>) =&gt; <span class="ident">Json</span>(<span class="ident">status</span>).<span class="ident">into_response</span>(),
         <span class="prelude-val">None</span> =&gt; <span class="ident">Error::StatusNotFound</span> { <span class="ident">id</span> }.<span class="ident">into_response</span>(),
     }
 }
@@ -337,11 +330,11 @@
     }
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="ident">Path</span>(<span class="ident">id</span>): <span class="ident">Path</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>) -&gt; <span class="ident">Response</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="ident">Path</span>(<span class="ident">id</span>): <span class="ident">Path</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">Response</span> {
     <span class="macro">debug!</span>(<span class="op">%</span><span class="ident">id</span>, <span class="string">&quot;deleting status&quot;</span>);
 
     <span class="comment">// TODO: propagate deletion to federated instances</span>
-    <span class="kw">match</span> <span class="ident">state</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) {
+    <span class="kw">match</span> <span class="ident">state</span>.<span class="ident">db</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>) {
         <span class="prelude-val">Some</span>(<span class="ident">status</span>) =&gt; <span class="ident">Json</span>(<span class="ident">DeleteResponse::new</span>(<span class="kw-2">&amp;</span><span class="ident">status</span>)).<span class="ident">into_response</span>(),
         <span class="prelude-val">None</span> =&gt; <span class="ident">Error::StatusNotFound</span> { <span class="ident">id</span> }.<span class="ident">into_response</span>(),
     }
@@ -357,10 +350,7 @@
     };
     <span class="kw">use</span> <span class="ident">serde::de::DeserializeOwned</span>;
     <span class="kw">use</span> <span class="ident">serde_json::json</span>;
-    <span class="kw">use</span> <span class="ident">std</span>::{
-        <span class="ident">collections::HashMap</span>,
-        <span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>},
-    };
+    <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
     <span class="kw">use</span> <span class="ident">tower::ServiceExt</span>; <span class="comment">// for `app.oneshot()`</span>
 
     <span class="kw">const</span> <span class="ident">CONTENT</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;hello world&quot;</span>;
@@ -392,19 +382,19 @@
     }
 
     <span class="comment">// TODO: allow for inserting multiple statuses</span>
-    <span class="kw">fn</span> <span class="ident">prepared_state</span>() -&gt; (<span class="ident">String</span>, <span class="ident">State</span>) {
+    <span class="kw">fn</span> <span class="ident">prepared_state</span>() -&gt; (<span class="ident">String</span>, <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">Status::new</span>(<span class="ident">CONTENT</span>);
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">id</span>.<span class="ident">clone</span>();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
-        <span class="ident">state</span>.<span class="ident">insert</span>(<span class="ident">id</span>.<span class="ident">clone</span>(), <span class="ident">s</span>);
+        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">State::default</span>();
+        <span class="ident">state</span>.<span class="ident">db</span>.<span class="ident">insert</span>(<span class="ident">id</span>.<span class="ident">clone</span>(), <span class="ident">s</span>);
 
-        (<span class="ident">id</span>, <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">state</span>)))
+        (<span class="ident">id</span>, <span class="ident">Arc::new</span>(<span class="ident">state</span>))
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_create_ok</span>() {
-        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">build_routes</span>(<span class="ident">State::default</span>());
+        <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">build_routes</span>(<span class="ident">Arc::new</span>(<span class="ident">State::default</span>()));
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">post_req</span>(<span class="string">&quot;/api/v1/statuses&quot;</span>, <span class="macro">json!</span>({ <span class="string">&quot;status&quot;</span>: <span class="string">&quot;hello world&quot;</span> }));
         <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">app</span>.<span class="ident">oneshot</span>(<span class="ident">req</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
 

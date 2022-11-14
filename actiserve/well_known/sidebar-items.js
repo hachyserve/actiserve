@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":[["host_meta",""],["nodeinfo",""],["parse_webfinger_resource",""],["webfinger",""]],"struct":[["Link",""],["Params",""],["Resource",""]]};

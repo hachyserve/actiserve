@@ -21,53 +21,21 @@
 <span id="21">21</span>
 <span id="22">22</span>
 <span id="23">23</span>
-<span id="24">24</span>
-<span id="25">25</span>
-<span id="26">26</span>
-<span id="27">27</span>
-<span id="28">28</span>
-<span id="29">29</span>
-<span id="30">30</span>
-<span id="31">31</span>
-<span id="32">32</span>
-<span id="33">33</span>
-<span id="34">34</span>
-<span id="35">35</span>
-<span id="36">36</span>
-<span id="37">37</span>
-<span id="38">38</span>
-<span id="39">39</span>
-<span id="40">40</span>
-<span id="41">41</span>
-<span id="42">42</span>
-<span id="43">43</span>
-<span id="44">44</span>
-<span id="45">45</span>
-<span id="46">46</span>
-<span id="47">47</span>
-<span id="48">48</span>
-<span id="49">49</span>
-<span id="50">50</span>
-<span id="51">51</span>
-<span id="52">52</span>
-<span id="53">53</span>
-<span id="54">54</span>
-<span id="55">55</span>
-<span id="56">56</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Routes available on this server.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! We are implementing a subset of the activitypub API in order to function as a relay</span>
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">nodeinfo</span>, <span class="ident">statuses</span>, <span class="ident">State</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">nodeinfo</span>, <span class="ident">statuses</span>, <span class="ident">well_known</span>, <span class="ident">State</span>};
 <span class="kw">use</span> <span class="ident">axum</span>::{
     <span class="ident">routing</span>::{<span class="ident">delete</span>, <span class="ident">get</span>, <span class="ident">post</span>},
     <span class="ident">Extension</span>, <span class="ident">Router</span>,
 };
+<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
 <span class="comment">// TODO: remove statuses endpoints</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">build_routes</span>(<span class="ident">state</span>: <span class="ident">State</span>) -&gt; <span class="ident">Router</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">build_routes</span>(<span class="ident">state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>) -&gt; <span class="ident">Router</span> {
     <span class="ident">Router::new</span>()
         <span class="comment">// .route(&quot;/inbox&quot;, post(inbox::post))</span>
-        <span class="comment">// .route(&quot;/.well-known/webfinger&quot;, get(webfinger::get))</span>
+        .<span class="ident">route</span>(<span class="string">&quot;/.well-known/webfinger&quot;</span>, <span class="ident">get</span>(<span class="ident">well_known::webfinger</span>))
         .<span class="ident">route</span>(<span class="string">&quot;/.well-known/host-meta&quot;</span>, <span class="ident">get</span>(<span class="ident">well_known::host_meta</span>))
         .<span class="ident">route</span>(<span class="string">&quot;/.well-known/nodeinfo&quot;</span>, <span class="ident">get</span>(<span class="ident">well_known::nodeinfo</span>))
         .<span class="ident">route</span>(<span class="string">&quot;/nodeinfo/2.0&quot;</span>, <span class="ident">get</span>(<span class="ident">nodeinfo::get</span>))
@@ -75,40 +43,6 @@
         .<span class="ident">route</span>(<span class="string">&quot;/api/v1/statuses/:id&quot;</span>, <span class="ident">get</span>(<span class="ident">statuses::get</span>))
         .<span class="ident">route</span>(<span class="string">&quot;/api/v1/statuses/:id&quot;</span>, <span class="ident">delete</span>(<span class="ident">statuses::delete</span>))
         .<span class="ident">layer</span>(<span class="ident">Extension</span>(<span class="ident">state</span>))
-}
-
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">well_known</span> {
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">base_url</span>, <span class="ident">nodeinfo::NODE_INFO_SCHEMA</span>};
-    <span class="kw">use</span> <span class="ident">axum</span>::{<span class="ident">extract::Json</span>, <span class="ident">http::header</span>, <span class="ident">response::IntoResponse</span>};
-    <span class="kw">use</span> <span class="ident">serde_json::json</span>;
-
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">nodeinfo</span>() -&gt; <span class="kw">impl</span> <span class="ident">IntoResponse</span> {
-        <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> [(<span class="ident">header::CONTENT_TYPE</span>, <span class="string">&quot;application/json+jrd&quot;</span>)];
-        <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">base_url</span>();
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="macro">json!</span>({
-            <span class="string">&quot;links&quot;</span>: [
-                {
-                    <span class="string">&quot;rel&quot;</span>: <span class="ident">NODE_INFO_SCHEMA</span>,
-                    <span class="string">&quot;href&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;{base}/nodeinfo/2.0&quot;</span>),
-                }
-            ]
-        });
-
-        (<span class="ident">headers</span>, <span class="ident">Json</span>(<span class="ident">body</span>))
-    }
-
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">host_meta</span>() -&gt; <span class="kw">impl</span> <span class="ident">IntoResponse</span> {
-        <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> [(<span class="ident">header::CONTENT_TYPE</span>, <span class="string">&quot;application/xrd+xml&quot;</span>)];
-        <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">base_url</span>();
-        <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="macro">format!</span>(
-            <span class="string">r#&quot;&lt;?xml version=&quot;1.0&quot;?&gt;
-&lt;XRD xmlns=&quot;http://docs.oasis-open.org/ns/xri/xrd-1.0&quot;&gt;
-  &lt;Link rel=&quot;lrdd&quot; type=&quot;application/xrd+xml&quot; template=&quot;{base}/.well-known/webfinger?resource={{uri}}&quot;/&gt;
-&lt;/XRD&gt;&quot;#</span>
-        );
-
-        (<span class="ident">headers</span>, <span class="ident">body</span>)
-    }
 }
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="actiserve" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>

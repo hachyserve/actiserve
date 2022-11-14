@@ -168,6 +168,7 @@
 <span id="168">168</span>
 <span id="169">169</span>
 <span id="170">170</span>
+<span id="171">171</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Support for providing nodeinfo on /nodeinfo/2.0</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! The schema for the reponse format can be found here:</span>
@@ -176,10 +177,11 @@
 <span class="kw">use</span> <span class="ident">axum</span>::{<span class="ident">extract::Json</span>, <span class="ident">http::header</span>, <span class="ident">response::IntoResponse</span>, <span class="ident">Extension</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_json::Value</span>;
+<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NODE_INFO_SCHEMA</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;http://nodeinfo.diaspora.software/ns/schema/2.0&quot;</span>;
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>) -&gt; <span class="kw">impl</span> <span class="ident">IntoResponse</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="kw">impl</span> <span class="ident">IntoResponse</span> {
     <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> [(
         <span class="ident">header::CONTENT_TYPE</span>,
         <span class="macro">format!</span>(<span class="string">&quot;application/json; profile={NODE_INFO_SCHEMA}#,&quot;</span>),
