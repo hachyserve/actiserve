@@ -1,21 +1,19 @@
 use axum::Server;
-use std::{
-    collections::HashMap,
-    net::SocketAddr,
-    panic,
-    sync::{Arc, Mutex},
-};
+use std::{net::SocketAddr, panic, sync::Arc};
 use tracing::{error, info, subscriber};
 use tracing_subscriber::EnvFilter;
 
 mod error;
+mod extractors;
 mod nodeinfo;
 mod routes;
+mod state;
 mod statuses;
+mod well_known;
 
-pub use error::Error;
+pub use error::{Error, Result};
 use routes::build_routes;
-use statuses::Status;
+use state::State;
 
 const PORT: u16 = 4242;
 
@@ -23,9 +21,6 @@ const PORT: u16 = 4242;
 pub fn base_url() -> &'static str {
     option_env!("BASE_URL").unwrap_or("127.0.0.1:4242")
 }
-
-// TODO: persistent store for the statuses
-pub type State = Arc<Mutex<HashMap<String, Status>>>;
 
 #[tokio::main]
 async fn main() {
@@ -57,7 +52,7 @@ async fn main() {
 async fn run_server() {
     info!(port = PORT, "starting service");
 
-    let state: State = Arc::new(Mutex::new(HashMap::new()));
+    let state: Arc<State> = Arc::new(State::default());
     let app = build_routes(state);
     let addr = SocketAddr::from(([0, 0, 0, 0], PORT));
 

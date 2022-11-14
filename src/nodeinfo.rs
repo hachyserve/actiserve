@@ -6,10 +6,11 @@ use crate::State;
 use axum::{extract::Json, http::header, response::IntoResponse, Extension};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::Arc;
 
 pub const NODE_INFO_SCHEMA: &str = "http://nodeinfo.diaspora.software/ns/schema/2.0";
 
-pub async fn get(Extension(state): Extension<State>) -> impl IntoResponse {
+pub async fn get(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
     let headers = [(
         header::CONTENT_TYPE,
         format!("application/json; profile={NODE_INFO_SCHEMA}#,"),
