@@ -6,7 +6,7 @@ use crate::{
 };
 use axum::http::StatusCode;
 use futures::future::try_join_all;
-use serde_json::Value;
+use serde::Serialize;
 use std::{collections::HashMap, sync::Mutex};
 use tracing::trace;
 
@@ -18,13 +18,13 @@ pub struct State {
 }
 
 impl State {
-    #[tracing::instrument(err)]
-    pub async fn post_for_actor(
+    #[tracing::instrument(skip(self, message), err)]
+    pub async fn post_for_actor<T: Serialize + Clone>(
         &self,
         actor: &Actor,
         object_id: String,
         cache_value: String,
-        message: Value,
+        message: T,
     ) -> Result<()> {
         let inboxes = self.db.inboxes_for_actor(actor, &object_id)?;
         trace!(?inboxes, "posting message to all inboxes");

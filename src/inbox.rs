@@ -1,6 +1,6 @@
 use crate::{
     base_url,
-    client::Actor,
+    client::{Activity, ActivityType, Actor, IdOrObject},
     extractors,
     util::{host_from_uri, id_from_json},
     Error, Result, State,
@@ -21,16 +21,6 @@ pub struct InboxRequest {
     ty: ActivityType,
     actor: String,
     activity: Value,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-pub enum ActivityType {
-    Announce,
-    Create,
-    Delete,
-    Follow,
-    Undo,
-    Update,
 }
 
 #[tracing::instrument(level = "debug", fields(host, headers), err)]
@@ -64,6 +54,7 @@ pub async fn post(
         Delete | Update => handle_forward(&actor, req.activity, state).await?,
         Follow => handle_follow(&actor, req.activity, &host, state).await?,
         Undo => handle_undo(&actor, req.activity, state).await?,
+        _ => (),
     };
 
     Ok(extractors::Activity(json!({})))
@@ -80,17 +71,16 @@ async fn handle_relay(actor: &Actor, activity: Value, host: &str, state: Arc<Sta
 
     info!(id=%actor.id, "relaying post from actor");
     let activity_id = format!("https://{host}/activities/{}", Uuid::new_v4());
-    // TODO: use a struct for this rather than json!({..})
-    let message = json!({
-        "@context": "https://www.w3.org/ns/activitystreams",
-        "type": "Announce",
-        "to": [format!("https://{host}/followers")],
-        "actor": format!("https://{host}/actor"),
-        "object": object_id,
-        "id": activity_id
-    });
+    let message = Activity {
+        context: Default::default(),
+        ty: ActivityType::Announce,
+        to: vec![format!("https://{host}/followers")],
+        object: IdOrObject::Id(object_id.clone()),
+        id: activity_id.clone(),
+        actor: format!("https://{host}/actor)"),
+    };
 
-    debug!(%message, "relaying message");
+    debug!(?message, "relaying message");
     state
         .post_for_actor(actor, object_id, activity_id, message)
         .await
@@ -130,22 +120,19 @@ async fn handle_follow(
     let object_id = id_from_json(&activity);
     let message_id = Uuid::new_v4();
 
-    let message = json!({
-        "@context": "https://www.w3.org/ns/activitystreams",
-        "type": "Accept",
-        "to": [actor_id],
-        "actor": our_actor,
-
-        // this is wrong per litepub, but mastodon < 2.4 is not compliant with that profile.
-        "object": {
-            "type": "Follow",
-            "id": object_id,
-            "object": our_actor,
-            "actor": actor_id,
+    let message = Activity {
+        context: Default::default(),
+        ty: ActivityType::Accept,
+        to: vec![actor_id.clone()],
+        object: IdOrObject::Object {
+            ty: ActivityType::Follow,
+            id: object_id,
+            object: our_actor.clone(),
+            actor: actor_id.clone(),
         },
-
-        "id": format!("https://{host}/activities/{message_id}"),
-    });
+        actor: our_actor,
+        id: format!("https://{host}/activities/{message_id}"),
+    };
 
     state.client.json_post(inbox, message).await?;
 
