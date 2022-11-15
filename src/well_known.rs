@@ -1,7 +1,7 @@
 use crate::{base_url, extractors::Jrd, nodeinfo::NODE_INFO_SCHEMA, Error, Result};
 use axum::{
     extract::{Host, Query},
-    http::header,
+    http::{header, StatusCode},
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
@@ -60,8 +60,9 @@ pub async fn webfinger(
     let (user, domain) = parse_webfinger_resource(&resource)?;
 
     if user != "relay" || domain != host {
-        return Err(Error::UnknownUser {
-            user: user.to_owned(),
+        return Err(Error::StatusAndMessage {
+            status: StatusCode::NOT_FOUND,
+            message: "user not found",
         });
     }
 

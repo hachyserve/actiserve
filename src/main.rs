@@ -3,12 +3,14 @@ use std::{net::SocketAddr, panic, sync::Arc};
 use tracing::{error, info, subscriber};
 use tracing_subscriber::EnvFilter;
 
+mod client;
 mod error;
 mod extractors;
+mod inbox;
 mod nodeinfo;
 mod routes;
 mod state;
-mod statuses;
+mod util;
 mod well_known;
 
 pub use error::{Error, Result};

@@ -77,7 +77,11 @@ pub async fn get(Path(id): Path<String>, Extension(state): Extension<Arc<State>>
     // TODO: unauthenticated error
     match state.db.get(&id) {
         Some(status) => Json(status).into_response(),
-        None => Error::StatusNotFound { id }.into_response(),
+        None => Error::StatusAndMessage {
+            status: StatusCode::NOT_FOUND,
+            message: "record not found",
+        }
+        .into_response(),
     }
 }
 
@@ -112,7 +116,11 @@ pub async fn delete(Path(id): Path<String>, Extension(state): Extension<Arc<Stat
     // TODO: propagate deletion to federated instances
     match state.db.remove(&id) {
         Some(status) => Json(DeleteResponse::new(&status)).into_response(),
-        None => Error::StatusNotFound { id }.into_response(),
+        None => Error::StatusAndMessage {
+            status: StatusCode::NOT_FOUND,
+            message: "record not found",
+        }
+        .into_response(),
     }
 }
 
