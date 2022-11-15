@@ -30,24 +30,10 @@ pub async fn post(
     Extension(state): Extension<Arc<State>>,
     Json(req): Json<InboxRequest>,
 ) -> Result<extractors::Activity<Value>> {
-    if !headers.contains_key("signature") {
-        return Err(Error::MissingSignature);
-    }
-
-    let actor = state.client.get_actor(&req.actor).await?;
-
-    // TODO: reject the request based on config (block list, banned actors / software etc)
-
-    let actor_domain = host_from_uri(&req.actor)?;
-    if req.ty != ActivityType::Follow && state.db.inbox(&actor_domain).is_none() {
-        info!(actor=%req.actor, "rejecting actor for trying to POST without following");
-        return Err(Error::StatusAndMessage {
-            status: StatusCode::UNAUTHORIZED,
-            message: "access denied",
-        });
-    }
-
     use ActivityType::*;
+
+    validate_request(&req.actor, req.ty, &headers, &state).await?;
+    let actor = state.client.get_actor(&req.actor).await?;
 
     match req.ty {
         Announce | Create => handle_relay(&actor, req.activity, &host, state).await?,
@@ -58,6 +44,32 @@ pub async fn post(
     };
 
     Ok(extractors::Activity(json!({})))
+}
+
+async fn validate_request(
+    actor: &str,
+    ty: ActivityType,
+    headers: &HeaderMap,
+    state: &State,
+) -> Result<()> {
+    if !headers.contains_key("signature") {
+        return Err(Error::MissingSignature);
+    }
+
+    // TODO: validate signature
+
+    // TODO: reject the request based on config (block list, banned actors / software etc)
+
+    let actor_domain = host_from_uri(actor)?;
+    if ty != ActivityType::Follow && state.db.inbox(&actor_domain).is_none() {
+        info!(actor=%actor, "rejecting actor for trying to POST without following");
+        return Err(Error::StatusAndMessage {
+            status: StatusCode::UNAUTHORIZED,
+            message: "access denied",
+        });
+    }
+
+    Ok(())
 }
 
 #[tracing::instrument(level = "info", skip(state, activity), err)]
@@ -160,5 +172,108 @@ async fn handle_undo(actor: &Actor, activity: Value, state: Arc<State>) -> Resul
         "Announce" => handle_forward(actor, activity, state).await,
 
         _ => Ok(()),
+    }
+}
+
+#[cfg(test)]
+mod validation_tests {
+    use super::*;
+    use simple_test_case::test_case;
+
+    fn headers_with_signature() -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert("signature", "XXXXX".parse().unwrap());
+
+        headers
+    }
+
+    #[tokio::test]
+    async fn missing_signature_is_an_error() {
+        let res = validate_request(
+            "actor",
+            ActivityType::Create,
+            &HeaderMap::new(),
+            &State::default(),
+        )
+        .await;
+
+        assert_eq!(res, Err(Error::MissingSignature));
+    }
+
+    #[tokio::test]
+    async fn invalid_actor_uri_is_an_error() {
+        let actor = "example.com/without/scheme".to_owned();
+        let res = validate_request(
+            &actor,
+            ActivityType::Create,
+            &headers_with_signature(),
+            &State::default(),
+        )
+        .await;
+
+        assert_eq!(res, Err(Error::InvalidUri { uri: actor }));
+    }
+
+    #[test_case(ActivityType::Accept; "accept")]
+    #[test_case(ActivityType::Announce; "announce")]
+    #[test_case(ActivityType::Create; "create")]
+    #[test_case(ActivityType::Delete; "delete")]
+    #[test_case(ActivityType::Undo; "undo")]
+    #[test_case(ActivityType::Update; "update")]
+    #[tokio::test]
+    async fn non_follow_for_unknown_inbox_is_an_error(ty: ActivityType) {
+        let res = validate_request(
+            "https://example.com/actor",
+            ty,
+            &headers_with_signature(),
+            &State::default(),
+        )
+        .await;
+
+        assert_eq!(
+            res,
+            Err(Error::StatusAndMessage {
+                status: StatusCode::UNAUTHORIZED,
+                message: "access denied"
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn follow_for_unknown_inbox_is_ok() {
+        let res = validate_request(
+            "https://example.com/actor",
+            ActivityType::Follow,
+            &headers_with_signature(),
+            &State::default(),
+        )
+        .await;
+
+        assert_eq!(res, Ok(()));
+    }
+
+    #[test_case(ActivityType::Accept; "accept")]
+    #[test_case(ActivityType::Announce; "announce")]
+    #[test_case(ActivityType::Create; "create")]
+    #[test_case(ActivityType::Delete; "delete")]
+    #[test_case(ActivityType::Undo; "undo")]
+    #[test_case(ActivityType::Update; "update")]
+    #[tokio::test]
+    async fn non_follow_for_known_inbox_is_ok(ty: ActivityType) {
+        let state = State::default();
+        state
+            .db
+            .add_inbox_if_unknown("https://example.com/actor".to_owned())
+            .unwrap();
+
+        let res = validate_request(
+            "https://example.com/actor",
+            ty,
+            &headers_with_signature(),
+            &state,
+        )
+        .await;
+
+        assert_eq!(res, Ok(()));
     }
 }

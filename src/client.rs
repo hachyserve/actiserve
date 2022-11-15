@@ -23,6 +23,7 @@ impl ActivityPubClient {
         }
     }
 
+    // TODO: sign requests
     pub async fn json_post<T: Serialize>(&self, uri: impl AsRef<str>, data: T) -> Result<Response> {
         let body = serde_json::to_string(&data).map_err(|e| Error::InvalidJson {
             uri: uri.as_ref().to_owned(),
@@ -32,7 +33,7 @@ impl ActivityPubClient {
         self.client
             .post(uri.as_ref())
             .body(body)
-            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::CONTENT_TYPE, "application/activity+json")
             .send()
             .await
             .map_err(|e| map_reqwest_error(uri.as_ref(), "POST", e))
