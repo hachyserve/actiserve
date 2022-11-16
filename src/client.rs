@@ -1,19 +1,77 @@
 //! A simple API client for making activitypub related requests
 use crate::{base_url, Error, Result};
+use axum::http::{HeaderMap, HeaderValue, Uri};
+use chrono::Utc;
 use reqwest::{header, Client, Response, StatusCode};
+use rsa::{PaddingScheme, PublicKey, RsaPrivateKey, RsaPublicKey};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_json::json;
 use tracing::{error, info};
 use uuid::Uuid;
 
-#[derive(Debug, Default)]
+const KEY_LEN: usize = 4096;
+
+#[derive(Debug)]
 pub struct ActivityPubClient {
+    #[allow(dead_code)]
+    priv_key: RsaPrivateKey,
+    pub_key: RsaPublicKey,
     client: Client,
 }
 
+impl Default for ActivityPubClient {
+    fn default() -> Self {
+        Self::new_with_key(new_priv_key())
+    }
+}
+
 impl ActivityPubClient {
+    pub fn new_with_key(priv_key: RsaPrivateKey) -> Self {
+        let pub_key = RsaPublicKey::from(&priv_key);
+
+        Self {
+            priv_key,
+            pub_key,
+            client: Default::default(),
+        }
+    }
+
+    fn signed_request_headers(&self, uri: &str, data: Option<&str>) -> Result<HeaderMap> {
+        let uri = uri.parse::<Uri>().map_err(|_| Error::InvalidUri {
+            uri: uri.to_owned(),
+        })?;
+
+        let method = if data.is_some() { "POST" } else { "GET" };
+        let path = uri.path();
+        let host = uri.host().ok_or(Error::InvalidUri {
+            uri: uri.to_string(),
+        })?;
+
+        let mut headers = HeaderMap::new();
+        headers.insert("(request-target)", header_val(&format!("{method} {path}"))?);
+        headers.insert("Date", header_val(&Utc::now().to_string())?);
+        headers.insert("Host", header_val(host)?);
+
+        if let Some(s) = data {
+            headers.insert("Content-Length", header_val(&s.len().to_string())?);
+
+            let h = hmac_sha256::Hash::hash(s.as_bytes());
+            let digest = base64::encode(h);
+            headers.insert("Digest", header_val(&format!("SHA-256={digest}"))?);
+        }
+
+        let signature = create_signature(&headers, &self.pub_key);
+        headers.insert("Signature", header_val(&signature)?);
+
+        // Now that we've generated the signature we can remove what we no longer need
+        headers.remove("(request-target)");
+        headers.remove("Host");
+
+        Ok(headers)
+    }
+
     async fn json_get<T: DeserializeOwned>(&self, uri: &str) -> Result<T> {
-        match self.client.get(uri).send().await {
+        let h = self.signed_request_headers(uri, None)?;
+        match self.client.get(uri).headers(h).send().await {
             Ok(raw) => raw.json().await.map_err(|e| Error::InvalidJson {
                 uri: uri.to_owned(),
                 raw: e.to_string(),
@@ -23,20 +81,26 @@ impl ActivityPubClient {
         }
     }
 
-    // TODO: sign requests
     pub async fn json_post<T: Serialize>(&self, uri: impl AsRef<str>, data: T) -> Result<Response> {
         let body = serde_json::to_string(&data).map_err(|e| Error::InvalidJson {
             uri: uri.as_ref().to_owned(),
             raw: e.to_string(),
         })?;
 
+        let uri = uri.as_ref();
+        let mut headers = self.signed_request_headers(uri, Some(&body))?;
+        headers.insert(
+            header::CONTENT_TYPE,
+            header_val("application/activity+json")?,
+        );
+
         self.client
-            .post(uri.as_ref())
+            .post(uri)
             .body(body)
-            .header(header::CONTENT_TYPE, "application/activity+json")
+            .headers(headers)
             .send()
             .await
-            .map_err(|e| map_reqwest_error(uri.as_ref(), "POST", e))
+            .map_err(|e| map_reqwest_error(uri, "POST", e))
     }
 
     pub async fn get_actor(&self, uri: &str) -> Result<Actor> {
@@ -117,6 +181,63 @@ fn map_reqwest_error(uri: impl Into<String>, method: &str, e: reqwest::Error) ->
     }
 }
 
+fn new_priv_key() -> RsaPrivateKey {
+    RsaPrivateKey::new(&mut rand::thread_rng(), KEY_LEN).expect("failed to generate a key")
+}
+
+// We should never be trying to construct an invalid header value in sign_request
+// below so if this pops we've definitely messed up somewhere
+fn header_val(s: &str) -> Result<HeaderValue> {
+    HeaderValue::from_str(s).map_err(|_| Error::StatusAndMessage {
+        status: StatusCode::INTERNAL_SERVER_ERROR,
+        message: "internal server error",
+    })
+}
+
+fn create_signature(headers: &HeaderMap, pub_key: &RsaPublicKey) -> String {
+    // Converting to a vec of pairs to ensure the iteration order is consistent in
+    // both the signature and the list of used headers
+    let pairs: Vec<_> = headers
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.to_string().to_lowercase(),
+                v.to_str().expect("valid ascii header values"),
+            )
+        })
+        .collect();
+
+    let sig_string: String = pairs
+        .iter()
+        .map(|(k, v)| format!("{k}: \"{v}\"",))
+        .collect::<Vec<String>>()
+        .join("\n");
+
+    let signed_bytes = pub_key
+        .encrypt(
+            &mut rand::thread_rng(),
+            PaddingScheme::new_pkcs1v15_encrypt(),
+            sig_string.as_bytes(),
+        )
+        .expect("encryption to succeed");
+
+    let signature = String::from_utf8(signed_bytes).expect("valid utf8 from encrypting");
+
+    let used_headers = pairs
+        .into_iter()
+        .map(|(k, _)| k)
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    vec![
+        format!("keyId=\"https://{}/actor#main-key\"", base_url()),
+        "algorithm=\"rsa-sha256\"".to_owned(),
+        format!("headers=\"{used_headers}\""),
+        format!("signature=\"{signature}\""),
+    ]
+    .join(",")
+}
+
 // NOTE: A subset of the rustypub Actor<'a> struct that can implement DeserializeOwned
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -176,6 +297,7 @@ pub enum IdOrObject {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     const ID: &str = "foo";
     const MESSAGE_ID: &str = "https://example.com/activities/message_id";
