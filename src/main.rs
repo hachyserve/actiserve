@@ -5,13 +5,9 @@ use tracing_subscriber::EnvFilter;
 
 mod client;
 mod error;
-mod extractors;
-mod inbox;
-mod nodeinfo;
 mod routes;
 mod state;
 mod util;
-mod well_known;
 
 pub use error::{Error, Result};
 use routes::build_routes;
@@ -55,6 +51,7 @@ async fn run_server() {
     info!(port = PORT, "starting service");
 
     let state: Arc<State> = Arc::new(State::default());
+    info!(pubkey = state.client.pub_key(), "pub key");
     let app = build_routes(state);
     let addr = SocketAddr::from(([0, 0, 0, 0], PORT));
 

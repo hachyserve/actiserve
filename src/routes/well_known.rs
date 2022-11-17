@@ -1,4 +1,8 @@
-use crate::{base_url, extractors::Jrd, nodeinfo::NODE_INFO_SCHEMA, Error, Result};
+use crate::{
+    base_url,
+    routes::{extractors::Jrd, nodeinfo::NODE_INFO_SCHEMA},
+    Error, Result,
+};
 use axum::{
     extract::{Host, Query},
     http::{header, StatusCode},
@@ -53,10 +57,14 @@ pub struct Params {
 }
 
 // https://tools.ietf.org/html/rfc7033
-pub async fn webfinger(
-    Host(host): Host,
-    Query(Params { resource }): Query<Params>,
-) -> Result<Jrd<Resource>> {
+pub async fn webfinger(Host(host): Host, params: Option<Query<Params>>) -> Result<Jrd<Resource>> {
+    let Some(Query(Params { resource })) = params else {
+        return Err(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: "must provide resource query param"
+        });
+    };
+
     let (user, domain) = parse_webfinger_resource(&resource)?;
 
     if user != "relay" || domain != host {

@@ -3,12 +3,16 @@ use crate::{base_url, Error, Result};
 use axum::http::{HeaderMap, HeaderValue, Uri};
 use chrono::Utc;
 use reqwest::{header, Client, Response, StatusCode};
-use rsa::{PaddingScheme, PublicKey, RsaPrivateKey, RsaPublicKey};
+use rsa::{
+    pkcs1::{EncodeRsaPublicKey, LineEnding},
+    PaddingScheme, PublicKey, RsaPrivateKey, RsaPublicKey,
+};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tracing::{error, info};
 use uuid::Uuid;
 
-const KEY_LEN: usize = 4096;
+const KEY_LEN: usize = 1024;
+// const KEY_LEN: usize = 4096;
 
 #[derive(Debug)]
 pub struct ActivityPubClient {
@@ -33,6 +37,12 @@ impl ActivityPubClient {
             pub_key,
             client: Default::default(),
         }
+    }
+
+    pub fn pub_key(&self) -> String {
+        self.pub_key
+            .to_pkcs1_pem(LineEnding::default())
+            .expect("to encode to PEM successfully")
     }
 
     fn signed_request_headers(&self, uri: &str, data: Option<&str>) -> Result<HeaderMap> {

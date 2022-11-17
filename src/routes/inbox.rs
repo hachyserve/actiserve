@@ -1,7 +1,7 @@
 use crate::{
     base_url,
     client::{Activity, ActivityType, Actor, IdOrObject},
-    extractors,
+    routes::extractors,
     util::{host_from_uri, id_from_json},
     Error, Result, State,
 };
