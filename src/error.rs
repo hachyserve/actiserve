@@ -3,13 +3,26 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]
+#[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum Error {
+    #[error("failed http request: {method} {uri} ({status}): {error}")]
+    FailedRequest {
+        method: String,
+        status: StatusCode,
+        error: String,
+        uri: String,
+    },
+
+    #[error("invalid JSON from {uri}: {raw}")]
+    InvalidJson { uri: String, raw: String },
+
+    #[error("invalid public key pem: {error}")]
+    InvalidPublicKey { error: String },
+
     #[error("'{uri}' is not a valid uri")]
     InvalidUri { uri: String },
 
@@ -22,11 +35,11 @@ pub enum Error {
     #[error("missing signature")]
     MissingSignature,
 
-    #[error("record not found")]
-    StatusNotFound { id: String },
-
-    #[error("user not found")]
-    UnknownUser { user: String },
+    #[error("{message}")]
+    StatusAndMessage {
+        status: StatusCode,
+        message: &'static str,
+    },
 }
 
 impl IntoResponse for Error {
@@ -36,6 +49,23 @@ impl IntoResponse for Error {
         let error = self.to_string();
 
         let (status, data) = match self {
+            FailedRequest {
+                method,
+                status,
+                error,
+                uri,
+            } => (
+                status,
+                Json(json!({ "error": error, "uri": uri, "method": method })),
+            ),
+
+            InvalidJson { uri, raw } => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": error, "uri": uri, "raw": raw })),
+            ),
+
+            InvalidPublicKey { .. } => (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
+
             InvalidUri { uri } => (
                 StatusCode::UNAUTHORIZED,
                 Json(json!({ "error": error, "uri": uri })),
@@ -59,15 +89,7 @@ impl IntoResponse for Error {
 
             MissingSignature => (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
 
-            StatusNotFound { id } => (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "error": error, "id": id })),
-            ),
-
-            UnknownUser { user } => (
-                StatusCode::NOT_FOUND,
-                Json(json!({ "error": error, "user": user })),
-            ),
+            StatusAndMessage { status, message } => (status, Json(json!({ "error": message }))),
         };
 
         (status, data).into_response()

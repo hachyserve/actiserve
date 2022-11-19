@@ -3,13 +3,12 @@ use std::{net::SocketAddr, panic, sync::Arc};
 use tracing::{error, info, subscriber};
 use tracing_subscriber::EnvFilter;
 
+mod client;
 mod error;
-mod extractors;
-mod nodeinfo;
 mod routes;
+mod signature;
 mod state;
-mod statuses;
-mod well_known;
+mod util;
 
 pub use error::{Error, Result};
 use routes::build_routes;
@@ -52,7 +51,12 @@ async fn main() {
 async fn run_server() {
     info!(port = PORT, "starting service");
 
-    let state: Arc<State> = Arc::new(State::default());
+    let priv_key_pem = match std::fs::read_to_string("priv-key.pem") {
+        Ok(s) => s,
+        Err(e) => panic!("unable to read private key: {e}"),
+    };
+
+    let state: Arc<State> = Arc::new(State::new(Default::default(), &priv_key_pem));
     let app = build_routes(state);
     let addr = SocketAddr::from(([0, 0, 0, 0], PORT));
 
