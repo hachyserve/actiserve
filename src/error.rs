@@ -20,6 +20,9 @@ pub enum Error {
     #[error("invalid JSON from {uri}: {raw}")]
     InvalidJson { uri: String, raw: String },
 
+    #[error("invalid public key pem: {error}")]
+    InvalidPublicKey { error: String },
+
     #[error("'{uri}' is not a valid uri")]
     InvalidUri { uri: String },
 
@@ -60,6 +63,8 @@ impl IntoResponse for Error {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": error, "uri": uri, "raw": raw })),
             ),
+
+            InvalidPublicKey { .. } => (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
 
             InvalidUri { uri } => (
                 StatusCode::UNAUTHORIZED,

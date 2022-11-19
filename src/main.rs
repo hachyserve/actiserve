@@ -6,6 +6,7 @@ use tracing_subscriber::EnvFilter;
 mod client;
 mod error;
 mod routes;
+mod signature;
 mod state;
 mod util;
 
@@ -50,8 +51,12 @@ async fn main() {
 async fn run_server() {
     info!(port = PORT, "starting service");
 
-    let state: Arc<State> = Arc::new(State::default());
-    info!(pubkey = state.client.pub_key(), "pub key");
+    let priv_key_pem = match std::fs::read_to_string("priv-key.pem") {
+        Ok(s) => s,
+        Err(e) => panic!("unable to read private key: {e}"),
+    };
+
+    let state: Arc<State> = Arc::new(State::new(Default::default(), &priv_key_pem));
     let app = build_routes(state);
     let addr = SocketAddr::from(([0, 0, 0, 0], PORT));
 

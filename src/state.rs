@@ -10,7 +10,7 @@ use serde::Serialize;
 use std::{collections::HashMap, sync::Mutex};
 use tracing::trace;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct State {
     pub db: Db,
     pub client: ActivityPubClient,
@@ -18,6 +18,14 @@ pub struct State {
 }
 
 impl State {
+    pub fn new(db: Db, private_key_pem: &str) -> Self {
+        Self {
+            db,
+            client: ActivityPubClient::new_with_priv_key(private_key_pem),
+            object_cache: Default::default(),
+        }
+    }
+
     #[tracing::instrument(skip(self, message), err)]
     pub async fn post_for_actor<T: Serialize + Clone>(
         &self,
@@ -106,5 +114,20 @@ impl Db {
             .collect();
 
         Ok(inboxes)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    impl State {
+        pub fn new_with_test_key(db: Db) -> Self {
+            Self {
+                db,
+                client: ActivityPubClient::new_with_test_key(),
+                object_cache: Default::default(),
+            }
+        }
     }
 }

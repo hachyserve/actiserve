@@ -1,13 +1,13 @@
 //! A simple API client for making activitypub related requests
-use crate::{base_url, Error, Result};
-use axum::http::{HeaderMap, HeaderValue, Uri};
-use chrono::Utc;
+use crate::{base_url, signature::sign_request_headers, util::header_val, Error, Result};
 use reqwest::{header, Client, Response, StatusCode};
 use rsa::{
-    pkcs1::{EncodeRsaPublicKey, LineEnding},
-    PaddingScheme, PublicKey, RsaPrivateKey, RsaPublicKey,
+    pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey, EncodeRsaPublicKey, LineEnding},
+    pkcs1v15::SigningKey,
+    RsaPrivateKey, RsaPublicKey,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use sha2::Sha256;
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -16,24 +16,20 @@ const KEY_LEN: usize = 1024;
 
 #[derive(Debug)]
 pub struct ActivityPubClient {
-    #[allow(dead_code)]
-    priv_key: RsaPrivateKey,
+    signing_key: SigningKey<Sha256>,
     pub_key: RsaPublicKey,
     client: Client,
 }
 
-impl Default for ActivityPubClient {
-    fn default() -> Self {
-        Self::new_with_key(new_priv_key())
-    }
-}
-
 impl ActivityPubClient {
-    pub fn new_with_key(priv_key: RsaPrivateKey) -> Self {
+    pub fn new_with_priv_key(priv_key_pem: &str) -> Self {
+        let priv_key = RsaPrivateKey::from_pkcs1_pem(priv_key_pem)
+            .expect("the provided private key for initialising the ActivityPubClient was invalid");
         let pub_key = RsaPublicKey::from(&priv_key);
+        let signing_key = SigningKey::<Sha256>::new_with_prefix(priv_key);
 
         Self {
-            priv_key,
+            signing_key,
             pub_key,
             client: Default::default(),
         }
@@ -45,42 +41,8 @@ impl ActivityPubClient {
             .expect("to encode to PEM successfully")
     }
 
-    fn signed_request_headers(&self, uri: &str, data: Option<&str>) -> Result<HeaderMap> {
-        let uri = uri.parse::<Uri>().map_err(|_| Error::InvalidUri {
-            uri: uri.to_owned(),
-        })?;
-
-        let method = if data.is_some() { "POST" } else { "GET" };
-        let path = uri.path();
-        let host = uri.host().ok_or(Error::InvalidUri {
-            uri: uri.to_string(),
-        })?;
-
-        let mut headers = HeaderMap::new();
-        headers.insert("(request-target)", header_val(&format!("{method} {path}"))?);
-        headers.insert("Date", header_val(&Utc::now().to_string())?);
-        headers.insert("Host", header_val(host)?);
-
-        if let Some(s) = data {
-            headers.insert("Content-Length", header_val(&s.len().to_string())?);
-
-            let h = hmac_sha256::Hash::hash(s.as_bytes());
-            let digest = base64::encode(h);
-            headers.insert("Digest", header_val(&format!("SHA-256={digest}"))?);
-        }
-
-        let signature = create_signature(&headers, &self.pub_key);
-        headers.insert("Signature", header_val(&signature)?);
-
-        // Now that we've generated the signature we can remove what we no longer need
-        headers.remove("(request-target)");
-        headers.remove("Host");
-
-        Ok(headers)
-    }
-
     async fn json_get<T: DeserializeOwned>(&self, uri: &str) -> Result<T> {
-        let h = self.signed_request_headers(uri, None)?;
+        let h = sign_request_headers(uri, None, &self.signing_key)?;
         match self.client.get(uri).headers(h).send().await {
             Ok(raw) => raw.json().await.map_err(|e| Error::InvalidJson {
                 uri: uri.to_owned(),
@@ -98,7 +60,7 @@ impl ActivityPubClient {
         })?;
 
         let uri = uri.as_ref();
-        let mut headers = self.signed_request_headers(uri, Some(&body))?;
+        let mut headers = sign_request_headers(uri, Some(&body), &self.signing_key)?;
         headers.insert(
             header::CONTENT_TYPE,
             header_val("application/activity+json")?,
@@ -132,8 +94,28 @@ impl ActivityPubClient {
         }
     }
 
+    pub async fn follow_actor(&self, actor_uri: &str) -> Result<()> {
+        let Actor { id, inbox, .. } = self.get_actor(actor_uri).await?;
+        info!(%id, %inbox, "sending follow request to inbox");
+
+        let base = base_url();
+        let message_id = Uuid::new_v4();
+        let message = Activity {
+            context: Context::default(),
+            ty: ActivityType::Follow,
+            to: vec![id.clone()],
+            object: IdOrObject::Id(id),
+            id: format!("https://{base}/activities/{message_id}"),
+            actor: format!("https://{base}/actor)"),
+        };
+
+        self.json_post(inbox, message).await?;
+
+        Ok(())
+    }
+
     pub async fn unfollow_actor(&self, actor_uri: &str) -> Result<()> {
-        let Actor { id, inbox } = self.get_actor(actor_uri).await?;
+        let Actor { id, inbox, .. } = self.get_actor(actor_uri).await?;
         info!(%id, %inbox, "sending unfollow request to inbox");
 
         let base = base_url();
@@ -157,26 +139,6 @@ impl ActivityPubClient {
 
         Ok(())
     }
-
-    pub async fn follow_actor(&self, actor_uri: &str) -> Result<()> {
-        let Actor { id, inbox } = self.get_actor(actor_uri).await?;
-        info!(%id, %inbox, "sending follow request to inbox");
-
-        let base = base_url();
-        let message_id = Uuid::new_v4();
-        let message = Activity {
-            context: Context::default(),
-            ty: ActivityType::Follow,
-            to: vec![id.clone()],
-            object: IdOrObject::Id(id),
-            id: format!("https://{base}/activities/{message_id}"),
-            actor: format!("https://{base}/actor)"),
-        };
-
-        self.json_post(inbox, message).await?;
-
-        Ok(())
-    }
 }
 
 fn map_reqwest_error(uri: impl Into<String>, method: &str, e: reqwest::Error) -> Error {
@@ -191,61 +153,9 @@ fn map_reqwest_error(uri: impl Into<String>, method: &str, e: reqwest::Error) ->
     }
 }
 
+#[allow(dead_code)]
 fn new_priv_key() -> RsaPrivateKey {
     RsaPrivateKey::new(&mut rand::thread_rng(), KEY_LEN).expect("failed to generate a key")
-}
-
-// We should never be trying to construct an invalid header value in sign_request
-// below so if this pops we've definitely messed up somewhere
-fn header_val(s: &str) -> Result<HeaderValue> {
-    HeaderValue::from_str(s).map_err(|_| Error::StatusAndMessage {
-        status: StatusCode::INTERNAL_SERVER_ERROR,
-        message: "internal server error",
-    })
-}
-
-fn create_signature(headers: &HeaderMap, pub_key: &RsaPublicKey) -> String {
-    // Converting to a vec of pairs to ensure the iteration order is consistent in
-    // both the signature and the list of used headers
-    let pairs: Vec<_> = headers
-        .iter()
-        .map(|(k, v)| {
-            (
-                k.to_string().to_lowercase(),
-                v.to_str().expect("valid ascii header values"),
-            )
-        })
-        .collect();
-
-    let sig_string: String = pairs
-        .iter()
-        .map(|(k, v)| format!("{k}: \"{v}\"",))
-        .collect::<Vec<String>>()
-        .join("\n");
-
-    let signed_bytes = pub_key
-        .encrypt(
-            &mut rand::thread_rng(),
-            PaddingScheme::new_pkcs1v15_encrypt(),
-            sig_string.as_bytes(),
-        )
-        .expect("encryption to succeed");
-
-    let signature = String::from_utf8(signed_bytes).expect("valid utf8 from encrypting");
-
-    let used_headers = pairs
-        .into_iter()
-        .map(|(k, _)| k)
-        .collect::<Vec<_>>()
-        .join(" ");
-
-    vec![
-        format!("keyId=\"https://{}/actor#main-key\"", base_url()),
-        "algorithm=\"rsa-sha256\"".to_owned(),
-        format!("headers=\"{used_headers}\""),
-        format!("signature=\"{signature}\""),
-    ]
-    .join(",")
 }
 
 // NOTE: A subset of the rustypub Actor<'a> struct that can implement DeserializeOwned
@@ -254,6 +164,26 @@ fn create_signature(headers: &HeaderMap, pub_key: &RsaPublicKey) -> String {
 pub struct Actor {
     pub id: String,
     pub inbox: String,
+    #[serde(rename = "publicKey")]
+    pub public_key_info: PublickKeyInfo,
+}
+
+impl Actor {
+    pub fn key(&self) -> Result<RsaPublicKey> {
+        RsaPublicKey::from_pkcs1_pem(&self.public_key_info.public_key_pem).map_err(|e| {
+            Error::InvalidPublicKey {
+                error: e.to_string(),
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublickKeyInfo {
+    id: String,
+    owner: String,
+    public_key_pem: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -267,6 +197,7 @@ pub enum ActivityType {
     Update,
 }
 
+// FIXME: according to the spec this can also be an object or an array of a string and (one or more?) object(s)?
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Context(String);
@@ -307,7 +238,28 @@ pub enum IdOrObject {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::signature::tests::{TEST_PRIV_KEY, TEST_PUB_KEY};
     use serde_json::json;
+
+    impl ActivityPubClient {
+        pub fn new_with_test_key() -> Self {
+            Self::new_with_priv_key(TEST_PRIV_KEY)
+        }
+    }
+
+    impl Actor {
+        pub fn test_actor(id: &str) -> Self {
+            Self {
+                id: id.to_owned(),
+                inbox: "https://example.com/inbox".to_owned(),
+                public_key_info: PublickKeyInfo {
+                    id: id.to_owned(),
+                    owner: "self".to_owned(),
+                    public_key_pem: TEST_PUB_KEY.to_owned(),
+                },
+            }
+        }
+    }
 
     const ID: &str = "foo";
     const MESSAGE_ID: &str = "https://example.com/activities/message_id";
