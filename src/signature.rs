@@ -75,8 +75,9 @@ pub fn validate_signature(
     path: &str,
     headers: &HeaderMap,
 ) -> Result<()> {
-    let Some(sig) = headers.get("signature") else {
-    	return Err(Error::MissingSignature);
+    let sig = match headers.get("signature") {
+        Some(sig) => sig,
+        None => return Err(Error::MissingSignature),
     };
     let pub_key = actor.key()?;
     let mut sig = split_signature(sig.to_str().map_err(|_| INVALID_SIG)?)?;

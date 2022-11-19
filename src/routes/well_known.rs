@@ -58,11 +58,14 @@ pub struct Params {
 
 // https://tools.ietf.org/html/rfc7033
 pub async fn webfinger(Host(host): Host, params: Option<Query<Params>>) -> Result<Jrd<Resource>> {
-    let Some(Query(Params { resource })) = params else {
-        return Err(Error::StatusAndMessage {
-            status: StatusCode::BAD_REQUEST,
-            message: "must provide resource query param"
-        });
+    let Query(Params { resource }) = match params {
+        Some(params) => params,
+        None => {
+            return Err(Error::StatusAndMessage {
+                status: StatusCode::BAD_REQUEST,
+                message: "must provide resource query param",
+            })
+        }
     };
 
     let (user, domain) = parse_webfinger_resource(&resource)?;
