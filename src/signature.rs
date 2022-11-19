@@ -33,26 +33,38 @@ pub fn sign_request_headers(
     let host = uri.host().ok_or(Error::InvalidUri {
         uri: uri.to_string(),
     })?;
+    let target = format!("{method} {path}");
+    let date = now();
 
-    let mut headers: HashMap<String, String> = HashMap::new();
-    headers.insert("(request-target)".into(), format!("{method} {path}"));
-    headers.insert("Date".into(), Utc::now().to_string());
-    headers.insert("Host".into(), host.into());
+    let mut pairs: Vec<(&str, &str)> = vec![
+        ("(request-target)", &target),
+        ("date", &date),
+        ("host", host),
+    ];
 
-    if let Some(s) = data {
-        headers.insert("Content-Length".into(), s.len().to_string());
-
+    let data_vals = data.map(|s| {
         let h = hmac_sha256::Hash::hash(s.as_bytes());
-        let digest = base64::encode(h);
-        headers.insert("Digest".into(), format!("SHA-256={digest}"));
+        let digest = format!("SHA-256={}", base64::encode(h));
+
+        (s.len().to_string(), digest)
+    });
+
+    if let Some((content_len, digest)) = data_vals.as_ref() {
+        pairs.push(("content-length", content_len));
+        pairs.push(("digest", digest));
     }
 
-    let signature = create_signature(&headers, sig_key);
-    headers.insert("Signature".into(), signature);
+    let signature = create_signature(&pairs, sig_key);
+    let mut headers: HashMap<String, String> = pairs
+        .into_iter()
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .collect();
+
+    headers.insert("signature".into(), signature);
 
     // Now that we've generated the signature we can remove what we no longer need
     headers.remove("(request-target)");
-    headers.remove("Host");
+    // headers.remove("host");
 
     Ok((&headers).try_into().expect("valid headers"))
 }
@@ -71,6 +83,16 @@ pub fn validate_signature(
     let target = format!("{method} {path}");
     sig.insert("(request-target)", &target);
 
+    // Need to convert to a bare hash map as HeaderMap will reject (request-target) as a key
+    let mut headers: HashMap<&str, &str> = headers
+        .iter()
+        .map(|(k, v)| match v.to_str() {
+            Ok(v) => Ok((k.as_str(), v)),
+            Err(_) => Err(INVALID_SIG),
+        })
+        .collect::<Result<_>>()?;
+    headers.insert("(request-target)", &target);
+
     let string_sig = sig.get("signature").ok_or(INVALID_SIG)?;
     let sig_data = base64::decode(string_sig).map_err(|_| INVALID_SIG)?;
     let signature = Signature::from(sig_data);
@@ -79,7 +101,12 @@ pub fn validate_signature(
         .get("headers")
         .ok_or(INVALID_SIG)?
         .split(' ')
-        .map(|k| sig.get(k).ok_or(INVALID_SIG).map(|v| (k, *v)))
+        .map(|k| {
+            headers
+                .get(k)
+                .ok_or_else(|| panic!("missing key: {k}"))
+                .map(|v| (k, *v))
+        })
         .collect::<Result<_>>()?;
 
     let signing_string = build_signing_string(&ordered_headers);
@@ -107,25 +134,18 @@ fn verify<D: Digest>(pub_key: RsaPublicKey, data: &[u8], signature: &Signature) 
     })
 }
 
-fn create_signature(headers: &HashMap<String, String>, sig_key: &SigningKey<Sha256>) -> String {
-    // Convert to a vec of pairs to ensure the iteration order is consistent in
-    // both the signature and the list of used headers
-    let pairs: Vec<(&str, &str)> = headers
-        .iter()
-        .map(|(k, v)| (k.as_str(), v.as_str()))
-        .collect();
-
+fn create_signature(pairs: &[(&str, &str)], sig_key: &SigningKey<Sha256>) -> String {
     let signed_bytes = sig_key
         .sign_with_rng(
             &mut rand::thread_rng(),
-            build_signing_string(&pairs).as_bytes(),
+            build_signing_string(pairs).as_bytes(),
         )
         .as_bytes()
         .to_vec();
 
     let signature = base64::encode(signed_bytes);
 
-    build_sig_header(signature, pairs.into_iter().map(|(k, _)| k))
+    build_sig_header(signature, pairs.iter().map(|(k, _)| *k))
 }
 
 fn build_signing_string(pairs: &[(&str, &str)]) -> String {
@@ -160,11 +180,18 @@ fn build_sig_header<'a>(signature: String, mut headers: impl Iterator<Item = &'a
     .join(",")
 }
 
+fn now() -> String {
+    Utc::now().format("%a, %d %b %Y %H:%M:%S UTC").to_string()
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
     use crate::map;
-    use rsa::{pkcs1::DecodeRsaPrivateKey, RsaPrivateKey};
+    use rsa::{
+        pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey},
+        RsaPrivateKey,
+    };
 
     // A valid but low bit size private key for use in running unit tests
     // without needing to generate one on demand.
@@ -194,12 +221,14 @@ JPak271KI5Yn+6Xo2E8GU/mREfGZy/G07iV6eqLciynbeJiVp71KxUR2x/5GR6Mr
 JHDXEfYsCzSikhI33KHhsxu0yf168jlNorlgT8Yzax2y5QkpqbtFAgMBAAE=
 -----END RSA PUBLIC KEY-----";
 
-    pub fn sign_test_req(uri: &str, data: Option<&str>) -> HeaderMap {
-        let s_key: SigningKey<Sha256> = RsaPrivateKey::from_pkcs1_pem(TEST_PRIV_KEY)
+    fn sig_key() -> SigningKey<Sha256> {
+        RsaPrivateKey::from_pkcs1_pem(TEST_PRIV_KEY)
             .expect("test key to be valid")
-            .into();
+            .into()
+    }
 
-        sign_request_headers(uri, data, &s_key).expect("to sign")
+    pub fn sign_test_req(uri: &str, data: Option<&str>) -> HeaderMap {
+        sign_request_headers(uri, data, &sig_key()).expect("to sign")
     }
 
     #[test]
@@ -224,6 +253,21 @@ JHDXEfYsCzSikhI33KHhsxu0yf168jlNorlgT8Yzax2y5QkpqbtFAgMBAAE=
         assert_eq!(split, expected);
     }
 
+    // Just to make sure I'm using the rsa crate correctly
+    #[test]
+    fn sign_verify() {
+        let v_key: VerifyingKey<Sha256> = RsaPublicKey::from_pkcs1_pem(TEST_PUB_KEY)
+            .expect("test key to be valid")
+            .into();
+
+        let s = "this is a test";
+
+        let signature = sig_key().sign_with_rng(&mut rand::thread_rng(), s.as_bytes());
+        let res = v_key.verify(s.as_bytes(), &signature);
+
+        assert!(res.is_ok())
+    }
+
     #[test]
     fn we_can_verify_our_own_signatures() {
         let uri = "https://example.com/inbox";
@@ -234,6 +278,6 @@ JHDXEfYsCzSikhI33KHhsxu0yf168jlNorlgT8Yzax2y5QkpqbtFAgMBAAE=
         let actor = Actor::test_actor("https://example.com/actor");
 
         let res = validate_signature(&actor, "post", "/inbox", &headers);
-        assert!(res.is_ok());
+        assert_eq!(res, Ok(()));
     }
 }
