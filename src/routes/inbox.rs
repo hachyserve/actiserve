@@ -178,19 +178,11 @@ mod validation_tests {
 
     #[tokio::test]
     async fn invalid_actor_uri_is_an_error() {
-        let db = match Db::new() {
-            Ok(db) => db,
-            Err(e) => panic!("unable to create database: {e}"),
-        };
+        let db = Db::new(std::env::current_dir().unwrap()).expect("unable to create database");
         let state = State::new_with_test_key(db);
 
         let actor = "example.com/without/scheme".to_owned();
-        let res = validate_request(
-            &Actor::test_actor(&actor),
-            ActivityType::Create,
-            &state,
-        )
-        .await;
+        let res = validate_request(&Actor::test_actor(&actor), ActivityType::Create, &state).await;
 
         assert_eq!(res, Err(Error::InvalidUri { uri: actor }));
 
@@ -205,17 +197,10 @@ mod validation_tests {
     #[test_case(ActivityType::Update; "update")]
     #[tokio::test]
     async fn non_follow_for_unknown_inbox_is_an_error(ty: ActivityType) {
-        let db = match Db::new() {
-            Ok(db) => db,
-            Err(e) => panic!("unable to create database: {e}"),
-        };
+        let db = Db::new(std::env::current_dir().unwrap()).expect("unable to create database");
         let state = State::new_with_test_key(db);
-        let res = validate_request(
-            &Actor::test_actor("https://example.com/actor"),
-            ty,
-            &state,
-        )
-        .await;
+        let res =
+            validate_request(&Actor::test_actor("https://example.com/actor"), ty, &state).await;
 
         assert_eq!(
             res,
@@ -229,10 +214,7 @@ mod validation_tests {
 
     #[tokio::test]
     async fn follow_for_unknown_inbox_is_ok() {
-        let db = match Db::new() {
-            Ok(db) => db,
-            Err(e) => panic!("unable to create database: {e}"),
-        };
+        let db = Db::new(std::env::current_dir().unwrap()).expect("unable to create database");
         let state = State::new_with_test_key(db);
         let res = validate_request(
             &Actor::test_actor("https://example.com/actor"),
@@ -253,10 +235,7 @@ mod validation_tests {
     #[test_case(ActivityType::Update; "update")]
     #[tokio::test]
     async fn non_follow_for_known_inbox_is_ok(ty: ActivityType) {
-        let db = match Db::new() {
-            Ok(db) => db,
-            Err(e) => panic!("unable to create database: {e}"),
-        };
+        let db = Db::new(std::env::current_dir().unwrap()).expect("unable to create database");
         let state = State::new_with_test_key(db);
         state
             .db

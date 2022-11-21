@@ -11,6 +11,9 @@ Cargo.lock
 
 priv-key.pem
 
+# created by tests
+statedb.json
+
 # Added by cargo
 
 /target

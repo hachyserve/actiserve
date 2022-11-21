@@ -8,7 +8,7 @@ use acidjson::AcidJson;
 use axum::http::StatusCode;
 use futures::future::try_join_all;
 use serde::Serialize;
-use std::{collections::HashMap, path::Path, sync::Mutex};
+use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 use tracing::trace;
 
 #[derive(Debug)]
@@ -71,19 +71,22 @@ pub struct Db {
 }
 
 impl Db {
-    pub fn new() -> Result<Self> {
-        // TODO: take path as argument
-        //std::fs::create_dir_all(&dbpath)?;
-        //dbpath.push("statedb.json");
-        let dbpath = Path::new("statedb.json");
-        if std::fs::read(&dbpath).is_err() && std::fs::write(&dbpath, b"{}").is_err() {
+    pub fn new(mut path: PathBuf) -> Result<Self> {
+        if std::fs::create_dir_all(&path).is_err() {
+            return Err(Error::StatusAndMessage {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: "unable to create data dir",
+            });
+        }
+        path.push("statedb.json");
+        if std::fs::read(&path).is_err() && std::fs::write(&path, b"{}").is_err() {
             return Err(Error::StatusAndMessage {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 message: "unable to create initial state db",
             });
         }
 
-        match AcidJson::open(dbpath) {
+        match AcidJson::open(path.as_path()) {
             Ok(db) => Ok(Self { inboxes: db }),
             Err(_) => Err(Error::StatusAndMessage {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
