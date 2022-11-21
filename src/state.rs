@@ -4,10 +4,11 @@ use crate::{
     util::host_from_uri,
     Error, Result,
 };
+use acidjson::AcidJson;
 use axum::http::StatusCode;
 use futures::future::try_join_all;
 use serde::Serialize;
-use std::{collections::HashMap, sync::Mutex};
+use std::{collections::HashMap, path::Path, sync::Mutex};
 use tracing::trace;
 
 #[derive(Debug)]
@@ -63,21 +64,41 @@ impl State {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Db {
     // map of host to inbox
-    inboxes: Mutex<HashMap<String, String>>,
+    inboxes: AcidJson<HashMap<String, String>>,
 }
 
 impl Db {
+    pub fn new() -> Result<Self> {
+        // TODO: take path as argument
+        //std::fs::create_dir_all(&dbpath)?;
+        //dbpath.push("statedb.json");
+        let dbpath = Path::new("statedb.json");
+        if std::fs::read(&dbpath).is_err() && std::fs::write(&dbpath, b"{}").is_err() {
+            return Err(Error::StatusAndMessage {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: "unable to create initial state db",
+            });
+        }
+
+        match AcidJson::open(dbpath) {
+            Ok(db) => Ok(Self { inboxes: db }),
+            Err(_) => Err(Error::StatusAndMessage {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: "unable to open state db",
+            }),
+        }
+    }
+
     pub fn add_inbox_if_unknown(&self, inbox: String) -> Result<bool> {
         let host = host_from_uri(&inbox)?;
-        let mut m = self.inboxes.lock().unwrap();
 
-        if m.contains_key(&inbox) {
+        if self.inboxes.read().contains_key(&inbox) {
             Ok(false)
         } else {
-            m.insert(host, inbox);
+            self.inboxes.write().insert(host, inbox);
             Ok(true)
         }
     }
@@ -86,8 +107,7 @@ impl Db {
         let host = host_from_uri(inbox)?;
 
         self.inboxes
-            .lock()
-            .unwrap()
+            .write()
             .remove(&host)
             .ok_or(Error::StatusAndMessage {
                 status: StatusCode::NOT_FOUND,
@@ -98,7 +118,7 @@ impl Db {
     pub fn inbox(&self, domain: &str) -> Option<String> {
         let domain = host_from_uri(domain).ok()?;
 
-        self.inboxes.lock().unwrap().get(&domain).cloned()
+        self.inboxes.read().get(&domain).cloned()
     }
 
     pub fn inboxes_for_actor(&self, actor: &Actor, object_id: &str) -> Result<Vec<String>> {
@@ -106,8 +126,7 @@ impl Db {
 
         let inboxes = self
             .inboxes
-            .lock()
-            .unwrap()
+            .read()
             .iter()
             .filter(|&(host, inbox)| inbox != &actor.inbox && host != &origin_host)
             .map(|(_, inbox)| inbox.to_owned())
@@ -128,6 +147,9 @@ mod tests {
                 client: ActivityPubClient::new_with_test_key(),
                 object_cache: Default::default(),
             }
+        }
+        pub fn clear(&self) {
+            self.db.inboxes.write().clear();
         }
     }
 }

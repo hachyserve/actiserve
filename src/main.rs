@@ -12,7 +12,8 @@ mod util;
 
 pub use error::{Error, Result};
 use routes::build_routes;
-use state::State;
+
+use crate::state::{Db, State};
 
 const PORT: u16 = 4242;
 
@@ -56,7 +57,12 @@ async fn run_server() {
         Err(e) => panic!("unable to read private key: {e}"),
     };
 
-    let state: Arc<State> = Arc::new(State::new(Default::default(), &priv_key_pem));
+    let db = match Db::new() {
+        Ok(db) => db,
+        Err(e) => panic!("unable to create database: {e}"),
+    };
+
+    let state: Arc<State> = Arc::new(State::new(db, &priv_key_pem));
     let app = build_routes(state);
     let addr = SocketAddr::from(([0, 0, 0, 0], PORT));
 
