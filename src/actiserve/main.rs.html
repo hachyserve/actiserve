@@ -65,10 +65,29 @@
 <span id="65">65</span>
 <span id="66">66</span>
 <span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">axum::Server</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">net::SocketAddr</span>, <span class="ident">panic</span>, <span class="ident">sync::Arc</span>};
+<span class="kw">use</span> <span class="ident">clap::Parser</span>;
+<span class="kw">use</span> <span class="ident">routes::build_routes</span>;
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">net::SocketAddr</span>, <span class="ident">panic</span>, <span class="ident">path::PathBuf</span>, <span class="ident">sync::Arc</span>};
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">subscriber</span>};
 <span class="kw">use</span> <span class="ident">tracing_subscriber::EnvFilter</span>;
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::state</span>::{<span class="ident">Db</span>, <span class="ident">State</span>};
 
 <span class="kw">mod</span> <span class="ident">client</span>;
 <span class="kw">mod</span> <span class="ident">error</span>;
@@ -78,18 +97,27 @@
 <span class="kw">mod</span> <span class="ident">util</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">error</span>::{<span class="ident">Error</span>, <span class="prelude-ty">Result</span>};
-<span class="kw">use</span> <span class="ident">routes::build_routes</span>;
-<span class="kw">use</span> <span class="ident">state::State</span>;
 
+<span class="comment">// TODO: move this to Args</span>
 <span class="kw">const</span> <span class="ident">PORT</span>: <span class="ident">u16</span> <span class="op">=</span> <span class="number">4242</span>;
 
 <span class="doccomment">/// Lookup our base url from the environment or default to localhost:4242</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">base_url</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="comment">// TODO: move this to Args or build it from there.</span>
     <span class="macro">option_env!</span>(<span class="string">&quot;BASE_URL&quot;</span>).<span class="ident">unwrap_or</span>(<span class="string">&quot;127.0.0.1:4242&quot;</span>)
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Parser</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">command</span>(<span class="ident">author</span>, <span class="ident">version</span>, <span class="ident">about</span>, <span class="ident">long_about</span> <span class="op">=</span> <span class="prelude-val">None</span>)]</span>
+<span class="kw">struct</span> <span class="ident">Args</span> {
+    <span class="attribute">#[<span class="ident">arg</span>(<span class="ident">long</span>)]</span>
+    <span class="ident">data_dir</span>: <span class="ident">PathBuf</span>,
 }
 
 <span class="attribute">#[<span class="ident">tokio::main</span>]</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">Args::parse</span>();
+
     <span class="ident">subscriber::set_global_default</span>(
         <span class="ident">tracing_subscriber::fmt</span>()
             .<span class="ident">json</span>()
@@ -112,20 +140,22 @@
         }
     }));
 
-    <span class="ident">run_server</span>().<span class="kw">await</span>
+    <span class="ident">run_server</span>(<span class="ident">args</span>).<span class="kw">await</span>
 }
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run_server</span>() {
+<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run_server</span>(<span class="ident">args</span>: <span class="ident">Args</span>) {
     <span class="macro">info!</span>(<span class="ident">port</span> <span class="op">=</span> <span class="ident">PORT</span>, <span class="string">&quot;starting service&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">priv_key_pem</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">std::fs::read_to_string</span>(<span class="string">&quot;priv-key.pem&quot;</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;unable to read private key: {e}&quot;</span>),
-    };
+    <span class="kw">let</span> <span class="ident">priv_key_pem</span> <span class="op">=</span> <span class="ident">std::fs::read_to_string</span>(<span class="string">&quot;priv-key.pem&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;unable to read private key&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">State::new</span>(<span class="ident">Default::default</span>(), <span class="kw-2">&amp;</span><span class="ident">priv_key_pem</span>));
+    <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">Db::new</span>(<span class="ident">args</span>.<span class="ident">data_dir</span>).<span class="ident">expect</span>(<span class="string">&quot;unable to create database&quot;</span>);
+
+    <span class="kw">let</span> <span class="ident">state</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">State::new</span>(<span class="ident">db</span>, <span class="kw-2">&amp;</span><span class="ident">priv_key_pem</span>));
     <span class="kw">let</span> <span class="ident">app</span> <span class="op">=</span> <span class="ident">build_routes</span>(<span class="ident">state</span>);
-    <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">SocketAddr::from</span>(([<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>], <span class="ident">PORT</span>));
+
+    <span class="kw">let</span> <span class="ident">addr</span>: <span class="ident">SocketAddr</span> <span class="op">=</span> <span class="ident">base_url</span>()
+        .<span class="ident">parse</span>()
+        .<span class="ident">expect</span>(<span class="string">&quot;unable to parse address and port&quot;</span>);
 
     <span class="ident">Server::bind</span>(<span class="kw-2">&amp;</span><span class="ident">addr</span>)
         .<span class="ident">serve</span>(<span class="ident">app</span>.<span class="ident">into_make_service</span>())
