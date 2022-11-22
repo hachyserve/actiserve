@@ -18,5 +18,7 @@ jobs:
         run: cargo check --verbose
       - name: build
         run: cargo build --verbose
+      - name: start-server
+        run: make up &
       - name: test
-        run: cargo test --verbose
+        run: make test-all

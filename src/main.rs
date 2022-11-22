@@ -28,8 +28,13 @@ pub fn base_url() -> &'static str {
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    #[arg(long)]
+    /// Directory to use for storing JSON DB state
+    #[arg(long, default_value = ".")]
     data_dir: PathBuf,
+
+    /// Path to a valid private key in PEM format
+    #[arg(long)]
+    private_key: PathBuf,
 }
 
 #[tokio::main]
@@ -62,10 +67,14 @@ async fn main() {
 }
 
 async fn run_server(args: Args) {
-    info!(port = PORT, "starting service");
+    info!(path = %args.private_key.display(), "loading private key");
+    let priv_key_pem =
+        std::fs::read_to_string(args.private_key).expect("unable to read private key");
 
-    let priv_key_pem = std::fs::read_to_string("priv-key.pem").expect("unable to read private key");
-
+    info!(
+        data_dir = %args.data_dir.display(),
+        "initialising DB"
+    );
     let db = Db::new(args.data_dir).expect("unable to create database");
 
     let state: Arc<State> = Arc::new(State::new(db, &priv_key_pem));
@@ -74,6 +83,8 @@ async fn run_server(args: Args) {
     let addr: SocketAddr = base_url()
         .parse()
         .expect("unable to parse address and port");
+
+    info!(port = PORT, "starting service");
 
     Server::bind(&addr)
         .serve(app.into_make_service())
