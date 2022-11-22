@@ -18,5 +18,7 @@ jobs:
         run: cargo check --verbose
       - name: build
         run: cargo build --verbose
+      - name: start-server
+        run: cargo run -- --data-dir .
       - name: test
-        run: cargo test --verbose
+        run: BASE_URL='http://127.0.0.1:4242' cargo test --features need_local_server --verbose
