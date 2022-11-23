@@ -1,6 +1,7 @@
 //! Server shared state
 use crate::{
     client::{ActivityPubClient, Actor},
+    config::Config,
     util::host_from_uri,
     Error, Result,
 };
@@ -13,14 +14,16 @@ use tracing::trace;
 
 #[derive(Debug)]
 pub struct State {
+    pub cfg: Config,
     pub db: Db,
     pub client: ActivityPubClient,
     object_cache: Mutex<HashMap<String, String>>,
 }
 
 impl State {
-    pub fn new(db: Db, private_key_pem: &str) -> Self {
+    pub fn new(cfg: Config, db: Db, private_key_pem: &str) -> Self {
         Self {
+            cfg,
             db,
             client: ActivityPubClient::new_with_priv_key(private_key_pem),
             object_cache: Default::default(),
@@ -146,6 +149,7 @@ mod tests {
     impl State {
         pub fn new_with_test_key(db: Db) -> Self {
             Self {
+                cfg: Config::default(),
                 db,
                 client: ActivityPubClient::new_with_test_key(),
                 object_cache: Default::default(),

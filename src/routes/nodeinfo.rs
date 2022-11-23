@@ -2,7 +2,7 @@
 //!
 //! The schema for the reponse format can be found here:
 //!   http://nodeinfo.diaspora.software/ns/schema/2.0#
-use crate::State;
+use crate::state::State;
 use axum::{extract::Json, http::header, response::IntoResponse, Extension};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

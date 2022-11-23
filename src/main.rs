@@ -1,45 +1,31 @@
 use axum::Server;
 use clap::Parser;
-use routes::build_routes;
 use std::{net::SocketAddr, panic, path::PathBuf, sync::Arc};
 use tracing::{error, info, subscriber};
 use tracing_subscriber::EnvFilter;
 
-use crate::state::{Db, State};
-
-mod client;
-mod error;
-mod routes;
-mod signature;
-mod state;
-mod util;
-
-pub use error::{Error, Result};
+use actiserve::{
+    base_url,
+    config::Config,
+    routes::build_routes,
+    state::{Db, State},
+};
 
 // TODO: move this to Args
 const PORT: u16 = 4242;
 
-/// Lookup our base url from the environment or default to localhost:4242
-pub fn base_url() -> &'static str {
-    // TODO: move this to Args or build it from there.
-    option_env!("BASE_URL").unwrap_or("127.0.0.1:4242")
-}
-
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Directory to use for storing JSON DB state
-    #[arg(long, default_value = ".")]
-    data_dir: PathBuf,
-
-    /// Path to a valid private key in PEM format
-    #[arg(long)]
-    private_key: PathBuf,
+    /// Path to the YAML config file to use
+    #[arg(long, default_value = "config.yaml")]
+    config_path: PathBuf,
 }
 
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
+    let cfg = Config::load_or_write_default(args.config_path);
 
     subscriber::set_global_default(
         tracing_subscriber::fmt()
@@ -63,21 +49,21 @@ async fn main() {
         }
     }));
 
-    run_server(args).await
+    run_server(cfg).await
 }
 
-async fn run_server(args: Args) {
-    info!(path = %args.private_key.display(), "loading private key");
+async fn run_server(cfg: Config) {
+    info!(path = %cfg.private_key_path.display(), "loading private key");
     let priv_key_pem =
-        std::fs::read_to_string(args.private_key).expect("unable to read private key");
+        std::fs::read_to_string(&cfg.private_key_path).expect("unable to read private key");
 
     info!(
-        data_dir = %args.data_dir.display(),
+        data_dir = %cfg.data_dir.display(),
         "initialising DB"
     );
-    let db = Db::new(args.data_dir).expect("unable to create database");
+    let db = Db::new(cfg.data_dir.clone()).expect("unable to create database");
 
-    let state: Arc<State> = Arc::new(State::new(db, &priv_key_pem));
+    let state: Arc<State> = Arc::new(State::new(cfg, db, &priv_key_pem));
     let app = build_routes(state);
 
     let addr: SocketAddr = base_url()
