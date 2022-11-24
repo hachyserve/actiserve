@@ -1,5 +1,5 @@
 //! A simple API client for making activitypub related requests
-use crate::{base_url, signature::sign_request_headers, util::header_val, Error, Result};
+use crate::{signature::sign_request_headers, util::header_val, Error, Result};
 use reqwest::{header, Client, Response, StatusCode};
 use rsa::{
     pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey, EncodeRsaPublicKey, LineEnding},
@@ -19,10 +19,11 @@ pub struct ActivityPubClient {
     signing_key: SigningKey<Sha256>,
     pub_key: RsaPublicKey,
     client: Client,
+    base: String,
 }
 
 impl ActivityPubClient {
-    pub fn new_with_priv_key(priv_key_pem: &str) -> Self {
+    pub fn new_with_priv_key(priv_key_pem: &str, base: String) -> Self {
         let priv_key = RsaPrivateKey::from_pkcs1_pem(priv_key_pem)
             .expect("the provided private key for initialising the ActivityPubClient was invalid");
         let pub_key = RsaPublicKey::from(&priv_key);
@@ -32,6 +33,7 @@ impl ActivityPubClient {
             signing_key,
             pub_key,
             client: Default::default(),
+            base,
         }
     }
 
@@ -42,7 +44,7 @@ impl ActivityPubClient {
     }
 
     async fn json_get<T: DeserializeOwned>(&self, uri: &str) -> Result<T> {
-        let h = sign_request_headers(uri, None, &self.signing_key)?;
+        let h = sign_request_headers(&self.base, uri, None, &self.signing_key)?;
         match self.client.get(uri).headers(h).send().await {
             Ok(raw) => raw.json().await.map_err(|e| Error::InvalidJson {
                 uri: uri.to_owned(),
@@ -60,7 +62,7 @@ impl ActivityPubClient {
         })?;
 
         let uri = uri.as_ref();
-        let mut headers = sign_request_headers(uri, Some(&body), &self.signing_key)?;
+        let mut headers = sign_request_headers(&self.base, uri, Some(&body), &self.signing_key)?;
         headers.insert(
             header::CONTENT_TYPE,
             header_val("application/activity+json")?,
@@ -96,9 +98,9 @@ impl ActivityPubClient {
 
     pub async fn follow_actor(&self, actor_uri: &str) -> Result<()> {
         let Actor { id, inbox, .. } = self.get_actor(actor_uri).await?;
+        let base = &self.base;
         info!(%id, %inbox, "sending follow request to inbox");
 
-        let base = base_url();
         let message_id = Uuid::new_v4();
         let message = Activity {
             context: Context::default(),
@@ -116,9 +118,9 @@ impl ActivityPubClient {
 
     pub async fn unfollow_actor(&self, actor_uri: &str) -> Result<()> {
         let Actor { id, inbox, .. } = self.get_actor(actor_uri).await?;
+        let base = &self.base;
         info!(%id, %inbox, "sending unfollow request to inbox");
 
-        let base = base_url();
         let object_id = Uuid::new_v4();
         let message_id = Uuid::new_v4();
         let message = Activity {
@@ -243,7 +245,7 @@ mod tests {
 
     impl ActivityPubClient {
         pub fn new_with_test_key() -> Self {
-            Self::new_with_priv_key(TEST_PRIV_KEY)
+            Self::new_with_priv_key(TEST_PRIV_KEY, "127.0.0.1:4242".to_string())
         }
     }
 

@@ -5,14 +5,10 @@ use tracing::{error, info, subscriber};
 use tracing_subscriber::EnvFilter;
 
 use actiserve::{
-    base_url,
     config::Config,
     routes::build_routes,
     state::{Db, State},
 };
-
-// TODO: move this to Args
-const PORT: u16 = 4242;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -63,15 +59,16 @@ async fn run_server(cfg: Config) {
     );
     let db = Db::new(cfg.data_dir.clone()).expect("unable to create database");
 
+    let addr: SocketAddr = cfg
+        .base_url()
+        .parse()
+        .expect("unable to parse address and port");
+    let port = cfg.port;
+
     let state: Arc<State> = Arc::new(State::new(cfg, db, &priv_key_pem));
     let app = build_routes(state);
 
-    let addr: SocketAddr = base_url()
-        .parse()
-        .expect("unable to parse address and port");
-
-    info!(port = PORT, "starting service");
-
+    info!(%port, "starting service");
     Server::bind(&addr)
         .serve(app.into_make_service())
         .await

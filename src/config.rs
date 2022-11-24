@@ -24,7 +24,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            listen: Ipv4Addr::new(0, 0, 0, 0),
+            listen: Ipv4Addr::new(127, 0, 0, 1),
             port: 4242,
             data_dir: PathBuf::from("."),
             private_key_path: PathBuf::from("private-key.pem"),

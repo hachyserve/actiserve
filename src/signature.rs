@@ -1,4 +1,4 @@
-use crate::{base_url, client::Actor, Error, Result};
+use crate::{client::Actor, Error, Result};
 use axum::http::{HeaderMap, Uri};
 use chrono::Utc;
 use itertools::Itertools;
@@ -20,6 +20,7 @@ const INVALID_SIG: Error = Error::StatusAndMessage {
 };
 
 pub fn sign_request_headers(
+    base: &str,
     uri: &str,
     data: Option<&str>,
     sig_key: &SigningKey<Sha256>,
@@ -54,7 +55,7 @@ pub fn sign_request_headers(
         pairs.push(("digest", digest));
     }
 
-    let signature = create_signature(&pairs, sig_key);
+    let signature = create_signature(base, &pairs, sig_key);
     let mut headers: HashMap<String, String> = pairs
         .into_iter()
         .map(|(k, v)| (k.to_owned(), v.to_owned()))
@@ -135,7 +136,7 @@ fn verify<D: Digest>(pub_key: RsaPublicKey, data: &[u8], signature: &Signature) 
     })
 }
 
-fn create_signature(pairs: &[(&str, &str)], sig_key: &SigningKey<Sha256>) -> String {
+fn create_signature(base: &str, pairs: &[(&str, &str)], sig_key: &SigningKey<Sha256>) -> String {
     let signed_bytes = sig_key
         .sign_with_rng(
             &mut rand::thread_rng(),
@@ -146,7 +147,7 @@ fn create_signature(pairs: &[(&str, &str)], sig_key: &SigningKey<Sha256>) -> Str
 
     let signature = base64::encode(signed_bytes);
 
-    build_sig_header(signature, pairs.iter().map(|(k, _)| *k))
+    build_sig_header(base, signature, pairs.iter().map(|(k, _)| *k))
 }
 
 fn build_signing_string(pairs: &[(&str, &str)]) -> String {
@@ -169,11 +170,15 @@ fn split_signature(s: &str) -> Result<HashMap<&str, &str>> {
         .collect()
 }
 
-fn build_sig_header<'a>(signature: String, mut headers: impl Iterator<Item = &'a str>) -> String {
+fn build_sig_header<'a>(
+    base: &str,
+    signature: String,
+    mut headers: impl Iterator<Item = &'a str>,
+) -> String {
     let headers = headers.join(" ");
 
     vec![
-        format!("keyId=\"https://{}/actor#main-key\"", base_url()),
+        format!("keyId=\"https://{}/actor#main-key\"", base),
         "algorithm=\"rsa-sha256\"".to_owned(),
         format!("headers=\"{headers}\""),
         format!("signature=\"{signature}\""),
@@ -229,7 +234,7 @@ JHDXEfYsCzSikhI33KHhsxu0yf168jlNorlgT8Yzax2y5QkpqbtFAgMBAAE=
     }
 
     pub fn sign_test_req(uri: &str, data: Option<&str>) -> HeaderMap {
-        sign_request_headers(uri, data, &sig_key()).expect("to sign")
+        sign_request_headers("127.0.0.1:4242", uri, data, &sig_key()).expect("to sign")
     }
 
     #[test]

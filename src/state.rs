@@ -22,10 +22,12 @@ pub struct State {
 
 impl State {
     pub fn new(cfg: Config, db: Db, private_key_pem: &str) -> Self {
+        let client = ActivityPubClient::new_with_priv_key(private_key_pem, cfg.base_url());
+
         Self {
             cfg,
             db,
-            client: ActivityPubClient::new_with_priv_key(private_key_pem),
+            client,
             object_cache: Default::default(),
         }
     }

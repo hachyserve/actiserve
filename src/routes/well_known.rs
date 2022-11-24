@@ -1,19 +1,20 @@
 use crate::{
-    base_url,
     routes::{extractors::Jrd, nodeinfo::NODE_INFO_SCHEMA},
+    state::State,
     Error, Result,
 };
 use axum::{
-    extract::{Host, Query},
+    extract::{Extension, Host, Query},
     http::{header, StatusCode},
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::sync::Arc;
 
-pub async fn host_meta() -> impl IntoResponse {
+pub async fn host_meta(Extension(state): Extension<Arc<State>>) -> impl IntoResponse {
     let headers = [(header::CONTENT_TYPE, "application/xrd+xml")];
-    let base = base_url();
+    let base = state.cfg.base_url();
     let body = format!(
         r#"<?xml version="1.0"?>
 <XRD xmlns="http://docs.oasis-open.org/ns/xri/xrd-1.0">
@@ -24,12 +25,12 @@ pub async fn host_meta() -> impl IntoResponse {
     (headers, body)
 }
 
-pub async fn nodeinfo() -> Jrd<Value> {
+pub async fn nodeinfo(Extension(state): Extension<Arc<State>>) -> Jrd<Value> {
     Jrd(json!({
         "links": [
             {
                 "rel": NODE_INFO_SCHEMA,
-                "href": format!("{}/nodeinfo/2.0", base_url()),
+                "href": format!("{}/nodeinfo/2.0", state.cfg.base_url()),
             }
         ]
     }))
@@ -57,7 +58,11 @@ pub struct Params {
 }
 
 // https://tools.ietf.org/html/rfc7033
-pub async fn webfinger(Host(host): Host, params: Option<Query<Params>>) -> Result<Jrd<Resource>> {
+pub async fn webfinger(
+    Host(host): Host,
+    params: Option<Query<Params>>,
+    Extension(state): Extension<Arc<State>>,
+) -> Result<Jrd<Resource>> {
     let Query(Params { resource }) = match params {
         Some(params) => params,
         None => {
@@ -77,7 +82,7 @@ pub async fn webfinger(Host(host): Host, params: Option<Query<Params>>) -> Resul
         });
     }
 
-    let href = format!("{}/actor", base_url());
+    let href = format!("{}/actor", state.cfg.base_url());
 
     Ok(Jrd(Resource {
         aliases: vec![href.clone()],

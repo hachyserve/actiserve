@@ -1,5 +1,5 @@
 # IPv4 address to listen on
-listen: 0.0.0.0
+listen: 127.0.0.1
 # Port to listen on for the local server
 port: 4242
 # Directory to load and store our persistant state from

@@ -1,5 +1,4 @@
 use crate::{
-    base_url,
     client::{Activity, ActivityType, Actor, IdOrObject},
     routes::extractors,
     signature::validate_signature,
@@ -123,7 +122,7 @@ async fn handle_follow(
         state.client.follow_actor(actor_id).await?;
     }
 
-    let our_actor = format!("https://{}/actor", base_url());
+    let our_actor = format!("https://{}/actor", state.cfg.base_url());
     let object_id = id_from_json(&activity);
     let message_id = Uuid::new_v4();
 
