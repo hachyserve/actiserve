@@ -1,10 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::{self, File},
-    io::{ErrorKind, Write},
-    net::Ipv4Addr,
-    path::PathBuf,
-};
+use std::{fs, net::Ipv4Addr, path::PathBuf};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,43 +16,16 @@ pub struct Config {
     pub activity_pub: ActivityPubConfig,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            listen: Ipv4Addr::new(127, 0, 0, 1),
-            port: 4242,
-            data_dir: PathBuf::from("."),
-            private_key_path: PathBuf::from("private-key.pem"),
-            activity_pub: Default::default(),
-        }
-    }
-}
-
 impl Config {
     /// Try to load our config file if it exists, otherwise write out our
     /// default config and return that.
     ///
     /// Panics if the config file that is present is invalid or if we are unable
     /// to write out our default config.
-    pub fn load_or_write_default(path: PathBuf) -> Self {
+    pub fn load(path: PathBuf) -> Self {
         match fs::read_to_string(&path) {
             Ok(content) => serde_yaml::from_str(&content)
                 .unwrap_or_else(|e| panic!("unable to load config file: {e}")),
-
-            Err(e) if e.kind() == ErrorKind::NotFound => {
-                let mut f = File::create(&path)
-                    .unwrap_or_else(|e| panic!("to be able to create config file: {e}"));
-
-                let cfg = Self::default();
-                f.write_all(
-                    serde_yaml::to_string(&cfg)
-                        .unwrap_or_else(|e| panic!("unable to parse config: {e}"))
-                        .as_bytes(),
-                )
-                .unwrap_or_else(|e| panic!("unable to write config file: {e}"));
-
-                cfg
-            }
 
             Err(e) => panic!("unable to read config file: {e}"),
         }

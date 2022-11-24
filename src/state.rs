@@ -147,11 +147,18 @@ impl Db {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::Ipv4Addr;
 
     impl State {
         pub fn new_with_test_key(db: Db) -> Self {
             Self {
-                cfg: Config::default(),
+                cfg: Config {
+                    listen: Ipv4Addr::new(127, 0, 0, 1),
+                    port: 4242,
+                    data_dir: PathBuf::from("."),
+                    private_key_path: PathBuf::from("private-key.pem"),
+                    activity_pub: Default::default(),
+                },
                 db,
                 client: ActivityPubClient::new_with_test_key(),
                 object_cache: Default::default(),

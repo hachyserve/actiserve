@@ -21,7 +21,7 @@ struct Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
-    let cfg = Config::load_or_write_default(args.config_path);
+    let cfg = Config::load(args.config_path);
 
     subscriber::set_global_default(
         tracing_subscriber::fmt()
