@@ -1,6 +1,6 @@
 .PHONY: up
 up:
-	RUST_LOG=hyper=error,actiserve=debug cargo run -- --config-path resources/config.yaml
+	RUST_LOG=hyper=error,actiserve=debug cargo run -- --config-path resources/config.example.yaml
 
 .PHONY: test-all
 test-all:
