@@ -1,7 +1,7 @@
 //! Routes available on this server.
 //!
 //! We are implementing a subset of the activitypub API in order to function as a relay
-use crate::{client::Context, State};
+use crate::{client::Context, state::State};
 use axum::{
     extract::Host,
     routing::{get, post},
@@ -15,7 +15,7 @@ mod inbox;
 mod nodeinfo;
 mod well_known;
 
-pub(crate) fn build_routes(state: Arc<State>) -> Router {
+pub fn build_routes(state: Arc<State>) -> Router {
     Router::new()
         .route("/actor", get(get_actor))
         .route("/inbox", post(inbox::post))

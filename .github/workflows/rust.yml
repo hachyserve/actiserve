@@ -21,4 +21,4 @@ jobs:
       - name: start-server
         run: make up &
       - name: test
-        run: make test-all
+        run: make test-all-verbose

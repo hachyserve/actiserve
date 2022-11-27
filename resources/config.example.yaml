@@ -1,0 +1,21 @@
+# IPv4 address to listen on
+listen: 127.0.0.1
+# Port to listen on for the local server
+port: 4242
+# Directory to load and store our persistant state from
+dataDir: resources
+# Path to a valid public key in PEM format for signing and verifying requests
+privateKeyPath: resources/test-key.pem
+
+# Activitypub related config for running the relay
+activityPub:
+  # Used for generating activitypub messages and linking activitypub
+  # identities. It should be an SSL-enabled domain reachable by HTTPS.
+  host: localhost
+  # Instances that should always be rejected
+  blockedInstances: []
+  # Whether or not the allow list should be enabled (blocking anything
+  # not on the list)
+  allowList: false
+  # Instances that should accepted. Only enforced if allowList=true
+  allowedInstances: []

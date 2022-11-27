@@ -1,6 +1,7 @@
 //! Server shared state
 use crate::{
     client::{ActivityPubClient, Actor},
+    config::Config,
     util::host_from_uri,
     Error, Result,
 };
@@ -13,16 +14,20 @@ use tracing::trace;
 
 #[derive(Debug)]
 pub struct State {
+    pub cfg: Config,
     pub db: Db,
     pub client: ActivityPubClient,
     object_cache: Mutex<HashMap<String, String>>,
 }
 
 impl State {
-    pub fn new(db: Db, private_key_pem: &str) -> Self {
+    pub fn new(cfg: Config, db: Db, private_key_pem: &str) -> Self {
+        let client = ActivityPubClient::new_with_priv_key(private_key_pem, cfg.base_url());
+
         Self {
+            cfg,
             db,
-            client: ActivityPubClient::new_with_priv_key(private_key_pem),
+            client,
             object_cache: Default::default(),
         }
     }
@@ -142,10 +147,24 @@ impl Db {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::ActivityPubConfig;
+    use std::net::Ipv4Addr;
 
     impl State {
         pub fn new_with_test_key(db: Db) -> Self {
             Self {
+                cfg: Config {
+                    listen: Ipv4Addr::new(127, 0, 0, 1),
+                    port: 4242,
+                    data_dir: PathBuf::from("."),
+                    private_key_path: PathBuf::from("private-key.pem"),
+                    activity_pub: ActivityPubConfig {
+                        host: "localhost".into(),
+                        blocked_instances: vec![],
+                        allow_list: false,
+                        allowed_instances: vec![],
+                    },
+                },
                 db,
                 client: ActivityPubClient::new_with_test_key(),
                 object_cache: Default::default(),
