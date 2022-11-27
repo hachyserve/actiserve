@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["build_routes",""],["get_actor",""]],"mod":[["extractors","Helpers for setting the correct content type when building responses"],["inbox",""],["nodeinfo","Support for providing nodeinfo on /nodeinfo/2.0"],["well_known",""]]};
+window.SIDEBAR_ITEMS = {"fn":[["build_routes",""],["get_actor",""]]};

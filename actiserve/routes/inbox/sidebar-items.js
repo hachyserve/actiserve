@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":[["handle_follow",""],["handle_forward",""],["handle_relay",""],["handle_undo",""],["post",""],["validate_request",""]],"struct":[["InboxRequest",""]]};

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/routes/nodeinfo.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>nodeinfo.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../actiserve/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/routes/nodeinfo.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>nodeinfo.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../actiserve/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -169,176 +169,176 @@
 <span id="169">169</span>
 <span id="170">170</span>
 <span id="171">171</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Support for providing nodeinfo on /nodeinfo/2.0</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The schema for the reponse format can be found here:</span>
-<span class="doccomment">//!   http://nodeinfo.diaspora.software/ns/schema/2.0#</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::State</span>;
-<span class="kw">use</span> <span class="ident">axum</span>::{<span class="ident">extract::Json</span>, <span class="ident">http::header</span>, <span class="ident">response::IntoResponse</span>, <span class="ident">Extension</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">serde_json::Value</span>;
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+</pre><pre class="rust"><code><span class="doccomment">//! Support for providing nodeinfo on /nodeinfo/2.0
+//!
+//! The schema for the reponse format can be found here:
+//!   http://nodeinfo.diaspora.software/ns/schema/2.0#
+</span><span class="kw">use </span><span class="kw">crate</span>::state::State;
+<span class="kw">use </span>axum::{extract::Json, http::header, response::IntoResponse, Extension};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_json::Value;
+<span class="kw">use </span>std::sync::Arc;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">NODE_INFO_SCHEMA</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;http://nodeinfo.diaspora.software/ns/schema/2.0&quot;</span>;
+<span class="kw">pub const </span>NODE_INFO_SCHEMA: <span class="kw-2">&amp;</span>str = <span class="string">&quot;http://nodeinfo.diaspora.software/ns/schema/2.0&quot;</span>;
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get</span>(<span class="ident">Extension</span>(<span class="ident">state</span>): <span class="ident">Extension</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="kw">impl</span> <span class="ident">IntoResponse</span> {
-    <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> [(
-        <span class="ident">header::CONTENT_TYPE</span>,
+<span class="kw">pub async fn </span>get(Extension(state): Extension&lt;Arc&lt;State&gt;&gt;) -&gt; <span class="kw">impl </span>IntoResponse {
+    <span class="kw">let </span>headers = [(
+        header::CONTENT_TYPE,
         <span class="macro">format!</span>(<span class="string">&quot;application/json; profile={NODE_INFO_SCHEMA}#,&quot;</span>),
     )];
 
-    (<span class="ident">headers</span>, <span class="ident">Json</span>(<span class="ident">NodeInfo::new</span>(<span class="kw-2">&amp;</span><span class="ident">state</span>)))
+    (headers, Json(NodeInfo::new(<span class="kw-2">&amp;</span>state)))
 }
 
-<span class="doccomment">/// NodeInfo schema version 2.0</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;camelCase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NodeInfo</span> {
-    <span class="ident">version</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>,
-    <span class="ident">software</span>: <span class="ident">Software</span>,
-    <span class="ident">protocols</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Protocol</span><span class="op">&gt;</span>,
-    <span class="ident">services</span>: <span class="ident">Services</span>,
-    <span class="ident">open_registrations</span>: <span class="ident">bool</span>,
-    <span class="ident">usage</span>: <span class="ident">UsageStats</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
-    <span class="ident">meta_data</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>,
+<span class="doccomment">/// NodeInfo schema version 2.0
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;camelCase&quot;</span>)]
+</span><span class="kw">pub struct </span>NodeInfo {
+    version: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
+    software: Software,
+    protocols: Vec&lt;Protocol&gt;,
+    services: Services,
+    open_registrations: bool,
+    usage: UsageStats,
+    <span class="attribute">#[serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>)]
+    </span>meta_data: <span class="prelude-ty">Option</span>&lt;Value&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">NodeInfo</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">state</span>: <span class="kw-2">&amp;</span><span class="ident">State</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">version</span>: <span class="string">&quot;2.0&quot;</span>,
-            <span class="ident">software</span>: <span class="ident">Software::from_env</span>(),
-            <span class="ident">protocols</span>: <span class="macro">vec!</span>[<span class="ident">Protocol::ActivityPub</span>],
-            <span class="ident">services</span>: <span class="ident">Services::default</span>(),
-            <span class="ident">open_registrations</span>: <span class="bool-val">false</span>, <span class="comment">// TODO: double check what we should return here as a relay</span>
-            <span class="ident">usage</span>: <span class="ident">UsageStats::new</span>(<span class="ident">state</span>),
-            <span class="ident">meta_data</span>: <span class="prelude-val">None</span>,
+<span class="kw">impl </span>NodeInfo {
+    <span class="kw">pub fn </span>new(state: <span class="kw-2">&amp;</span>State) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            version: <span class="string">&quot;2.0&quot;</span>,
+            software: Software::from_env(),
+            protocols: <span class="macro">vec!</span>[Protocol::ActivityPub],
+            services: Services::default(),
+            open_registrations: <span class="bool-val">false</span>, <span class="comment">// TODO: double check what we should return here as a relay
+            </span>usage: UsageStats::new(state),
+            meta_data: <span class="prelude-val">None</span>,
         }
     }
 }
 
-<span class="doccomment">/// Metadata about server software in use.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Software</span> {
-    <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>,
-    <span class="ident">version</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>,
+<span class="doccomment">/// Metadata about server software in use.
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Software {
+    name: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
+    version: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
 }
 
-<span class="kw">impl</span> <span class="ident">Software</span> {
-    <span class="kw">fn</span> <span class="ident">from_env</span>() -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">name</span>: <span class="string">&quot;actiserve&quot;</span>,
-            <span class="ident">version</span>: <span class="macro">option_env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>).<span class="ident">unwrap_or</span>(<span class="string">&quot;unknown&quot;</span>),
+<span class="kw">impl </span>Software {
+    <span class="kw">fn </span>from_env() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            name: <span class="string">&quot;actiserve&quot;</span>,
+            version: <span class="macro">option_env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>).unwrap_or(<span class="string">&quot;unknown&quot;</span>),
         }
     }
 }
 
-<span class="doccomment">/// Protocols that can be supported on this server.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Protocol</span> {
-    <span class="ident">ActivityPub</span>,
-    <span class="ident">BuddyCloud</span>,
-    <span class="ident">Dfrn</span>,
-    <span class="ident">Diaspora</span>,
-    <span class="ident">LiberTree</span>,
-    <span class="ident">Ostatus</span>,
-    <span class="ident">Pumpio</span>,
-    <span class="ident">Tent</span>,
-    <span class="ident">Xmpp</span>,
-    <span class="ident">Zot</span>,
+<span class="doccomment">/// Protocols that can be supported on this server.
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>Protocol {
+    ActivityPub,
+    BuddyCloud,
+    Dfrn,
+    Diaspora,
+    LiberTree,
+    Ostatus,
+    Pumpio,
+    Tent,
+    Xmpp,
+    Zot,
 }
 
-<span class="comment">// TODO: Does this need to be implemented using the enums below? We&#39;re allowed to return an</span>
-<span class="comment">//       empty array for both of these. (If we are, then what services do we want to support?)</span>
+<span class="comment">// TODO: Does this need to be implemented using the enums below? We&#39;re allowed to return an
+//       empty array for both of these. (If we are, then what services do we want to support?)
 
-<span class="doccomment">/// The third party sites this server can connect to via their application API.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Services</span> {
-    <span class="ident">inbound</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InboundService</span><span class="op">&gt;</span>,
-    <span class="ident">outbound</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">OutboundService</span><span class="op">&gt;</span>,
+</span><span class="doccomment">/// The third party sites this server can connect to via their application API.
+</span><span class="attribute">#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Services {
+    inbound: Vec&lt;InboundService&gt;,
+    outbound: Vec&lt;OutboundService&gt;,
 }
 
-<span class="doccomment">/// The third party sites this server can retrieve messages from for combined display with regular traffic.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InboundService</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;atom1.0&quot;</span>)]</span>
-    <span class="ident">Atom</span>,
-    <span class="ident">GnuSocial</span>,
-    <span class="ident">Imap</span>,
-    <span class="ident">Pnut</span>,
-    <span class="ident">Pop3</span>,
-    <span class="ident">Pumpio</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;rss2.0&quot;</span>)]</span>
-    <span class="ident">Rss</span>,
-    <span class="ident">Twitter</span>, <span class="comment">// rip</span>
+<span class="doccomment">/// The third party sites this server can retrieve messages from for combined display with regular traffic.
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>InboundService {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;atom1.0&quot;</span>)]
+    </span>Atom,
+    GnuSocial,
+    Imap,
+    Pnut,
+    Pop3,
+    Pumpio,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;rss2.0&quot;</span>)]
+    </span>Rss,
+    Twitter, <span class="comment">// rip
+</span>}
+
+<span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;lowercase&quot;</span>)]
+</span><span class="kw">pub enum </span>OutboundService {
+    <span class="attribute">#[serde(rename = <span class="string">&quot;atom1.0&quot;</span>)]
+    </span>Atom,
+    Blogger,
+    BuddyCloud,
+    Diaspora,
+    DreamWidth,
+    Dripal,
+    Facebook,
+    Friendica,
+    GnuSocial,
+    Google,
+    InsaneJournal,
+    LiberTree,
+    LinkedIn,
+    LiveJournal,
+    MediaGoblin,
+    MySpace,
+    Pinterest,
+    Pnut,
+    Posterous,
+    Pumpio,
+    RedMatrix,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;rss2.0&quot;</span>)]
+    </span>Rss,
+    Smtp,
+    Tent,
+    Tumbler,
+    Twitter, <span class="comment">// rip
+    </span>Wordpress,
+    Xmpp,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OutboundService</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;atom1.0&quot;</span>)]</span>
-    <span class="ident">Atom</span>,
-    <span class="ident">Blogger</span>,
-    <span class="ident">BuddyCloud</span>,
-    <span class="ident">Diaspora</span>,
-    <span class="ident">DreamWidth</span>,
-    <span class="ident">Dripal</span>,
-    <span class="ident">Facebook</span>,
-    <span class="ident">Friendica</span>,
-    <span class="ident">GnuSocial</span>,
-    <span class="ident">Google</span>,
-    <span class="ident">InsaneJournal</span>,
-    <span class="ident">LiberTree</span>,
-    <span class="ident">LinkedIn</span>,
-    <span class="ident">LiveJournal</span>,
-    <span class="ident">MediaGoblin</span>,
-    <span class="ident">MySpace</span>,
-    <span class="ident">Pinterest</span>,
-    <span class="ident">Pnut</span>,
-    <span class="ident">Posterous</span>,
-    <span class="ident">Pumpio</span>,
-    <span class="ident">RedMatrix</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;rss2.0&quot;</span>)]</span>
-    <span class="ident">Rss</span>,
-    <span class="ident">Smtp</span>,
-    <span class="ident">Tent</span>,
-    <span class="ident">Tumbler</span>,
-    <span class="ident">Twitter</span>, <span class="comment">// rip</span>
-    <span class="ident">Wordpress</span>,
-    <span class="ident">Xmpp</span>,
-}
+<span class="comment">// NOTE: the only required field for the spec is users but we might want to provide
+//       more later once more of the server is implemented.
 
-<span class="comment">// NOTE: the only required field for the spec is users but we might want to provide</span>
-<span class="comment">//       more later once more of the server is implemented.</span>
+</span><span class="doccomment">/// Usage statistics for this server
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;camelCase&quot;</span>)]
+</span><span class="kw">pub struct </span>UsageStats {
+    users: UserStats,
+    <span class="comment">// local_posts: u32,
+    // local_comments: u32,
+</span>}
 
-<span class="doccomment">/// Usage statistics for this server</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;camelCase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UsageStats</span> {
-    <span class="ident">users</span>: <span class="ident">UserStats</span>,
-    <span class="comment">// local_posts: u32,</span>
-    <span class="comment">// local_comments: u32,</span>
-}
-
-<span class="kw">impl</span> <span class="ident">UsageStats</span> {
-    <span class="comment">// TODO: lookup user stats from persitent state / cache</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">_state</span>: <span class="kw-2">&amp;</span><span class="ident">State</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">users</span>: <span class="ident">UserStats</span> { <span class="ident">total</span>: <span class="number">0</span> },
+<span class="kw">impl </span>UsageStats {
+    <span class="comment">// TODO: lookup user stats from persitent state / cache
+    </span><span class="kw">fn </span>new(_state: <span class="kw-2">&amp;</span>State) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            users: UserStats { total: <span class="number">0 </span>},
         }
     }
 }
 
-<span class="doccomment">/// Statistics about the users of this server</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;camelCase&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UserStats</span> {
-    <span class="ident">total</span>: <span class="ident">u32</span>,
-    <span class="comment">// active_half_year: u32,</span>
-    <span class="comment">// active_month: u32,</span>
-}
+<span class="doccomment">/// Statistics about the users of this server
+</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = <span class="string">&quot;camelCase&quot;</span>)]
+</span><span class="kw">pub struct </span>UserStats {
+    total: u32,
+    <span class="comment">// active_half_year: u32,
+    // active_month: u32,
+</span>}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="actiserve" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="actiserve" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

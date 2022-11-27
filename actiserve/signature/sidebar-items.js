@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":[["INVALID_SIG",""]],"fn":[["build_sig_header",""],["build_signing_string",""],["create_signature",""],["now",""],["sign_request_headers",""],["split_signature",""],["validate_signature",""],["verify",""]]};
+window.SIDEBAR_ITEMS = {"fn":[["sign_request_headers",""],["validate_signature",""]]};

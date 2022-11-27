@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/routes/well_known.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>well_known.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../actiserve/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/routes/well_known.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>well_known.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../../normalize.css"><link rel="stylesheet" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../../ayu.css" disabled><link rel="stylesheet" href="../../../dark.css" disabled><link rel="stylesheet" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../main.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../actiserve/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -139,146 +139,156 @@
 <span id="139">139</span>
 <span id="140">140</span>
 <span id="141">141</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">base_url</span>,
-    <span class="ident">routes</span>::{<span class="ident">extractors::Jrd</span>, <span class="ident">nodeinfo::NODE_INFO_SCHEMA</span>},
-    <span class="ident">Error</span>, <span class="prelude-ty">Result</span>,
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{
+    routes::{extractors::Jrd, nodeinfo::NODE_INFO_SCHEMA},
+    state::State,
+    Error, <span class="prelude-ty">Result</span>,
 };
-<span class="kw">use</span> <span class="ident">axum</span>::{
-    <span class="ident">extract</span>::{<span class="ident">Host</span>, <span class="ident">Query</span>},
-    <span class="ident">http</span>::{<span class="ident">header</span>, <span class="ident">StatusCode</span>},
-    <span class="ident">response::IntoResponse</span>,
+<span class="kw">use </span>axum::{
+    extract::{Extension, Host, Query},
+    http::{header, StatusCode},
+    response::IntoResponse,
 };
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">serde_json</span>::{<span class="ident">json</span>, <span class="ident">Value</span>};
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_json::{json, Value};
+<span class="kw">use </span>std::sync::Arc;
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">host_meta</span>() -&gt; <span class="kw">impl</span> <span class="ident">IntoResponse</span> {
-    <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> [(<span class="ident">header::CONTENT_TYPE</span>, <span class="string">&quot;application/xrd+xml&quot;</span>)];
-    <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">base_url</span>();
-    <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="macro">format!</span>(
+<span class="kw">pub async fn </span>host_meta(Extension(state): Extension&lt;Arc&lt;State&gt;&gt;) -&gt; <span class="kw">impl </span>IntoResponse {
+    <span class="kw">let </span>headers = [(header::CONTENT_TYPE, <span class="string">&quot;application/xrd+xml&quot;</span>)];
+    <span class="kw">let </span>base = state.cfg.base_url();
+    <span class="kw">let </span>body = <span class="macro">format!</span>(
         <span class="string">r#&quot;&lt;?xml version=&quot;1.0&quot;?&gt;
 &lt;XRD xmlns=&quot;http://docs.oasis-open.org/ns/xri/xrd-1.0&quot;&gt;
   &lt;Link rel=&quot;lrdd&quot; type=&quot;application/xrd+xml&quot; template=&quot;{base}/.well-known/webfinger?resource={{uri}}&quot;/&gt;
-&lt;/XRD&gt;&quot;#</span>
-    );
+&lt;/XRD&gt;&quot;#
+    </span>);
 
-    (<span class="ident">headers</span>, <span class="ident">body</span>)
+    (headers, body)
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">nodeinfo</span>() -&gt; <span class="ident">Jrd</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span> {
-    <span class="ident">Jrd</span>(<span class="macro">json!</span>({
+<span class="kw">pub async fn </span>nodeinfo(Extension(state): Extension&lt;Arc&lt;State&gt;&gt;) -&gt; Jrd&lt;Value&gt; {
+    Jrd(<span class="macro">json!</span>({
         <span class="string">&quot;links&quot;</span>: [
             {
-                <span class="string">&quot;rel&quot;</span>: <span class="ident">NODE_INFO_SCHEMA</span>,
-                <span class="string">&quot;href&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;{}/nodeinfo/2.0&quot;</span>, <span class="ident">base_url</span>()),
+                <span class="string">&quot;rel&quot;</span>: NODE_INFO_SCHEMA,
+                <span class="string">&quot;href&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;{}/nodeinfo/2.0&quot;</span>, state.cfg.base_url()),
             }
         ]
     }))
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Resource</span> {
-    <span class="ident">aliases</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">links</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Link</span><span class="op">&gt;</span>,
-    <span class="ident">subject</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Resource {
+    aliases: Vec&lt;String&gt;,
+    links: Vec&lt;Link&gt;,
+    subject: String,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Link</span> {
-    <span class="ident">href</span>: <span class="ident">String</span>,
-    <span class="ident">rel</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;type&quot;</span>)]</span>
-    <span class="ident">ty</span>: <span class="ident">String</span>,
+<span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>Link {
+    href: String,
+    rel: String,
+    <span class="attribute">#[serde(rename = <span class="string">&quot;type&quot;</span>)]
+    </span>ty: String,
 }
 
-<span class="comment">// TODO: support rel?</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Params</span> {
-    <span class="ident">resource</span>: <span class="ident">String</span>,
+<span class="comment">// TODO: support rel?
+</span><span class="attribute">#[derive(Debug, Deserialize)]
+</span><span class="kw">pub struct </span>Params {
+    resource: String,
 }
 
-<span class="comment">// https://tools.ietf.org/html/rfc7033</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">webfinger</span>(<span class="ident">Host</span>(<span class="ident">host</span>): <span class="ident">Host</span>, <span class="ident">params</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Query</span><span class="op">&lt;</span><span class="ident">Params</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Jrd</span><span class="op">&lt;</span><span class="ident">Resource</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">Query</span>(<span class="ident">Params</span> { <span class="ident">resource</span> }) <span class="op">=</span> <span class="kw">match</span> <span class="ident">params</span> {
-        <span class="prelude-val">Some</span>(<span class="ident">params</span>) =&gt; <span class="ident">params</span>,
-        <span class="prelude-val">None</span> =&gt; {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::StatusAndMessage</span> {
-                <span class="ident">status</span>: <span class="ident">StatusCode::BAD_REQUEST</span>,
-                <span class="ident">message</span>: <span class="string">&quot;must provide resource query param&quot;</span>,
+<span class="comment">// https://tools.ietf.org/html/rfc7033
+</span><span class="kw">pub async fn </span>webfinger(
+    Host(host): Host,
+    params: <span class="prelude-ty">Option</span>&lt;Query&lt;Params&gt;&gt;,
+    Extension(state): Extension&lt;Arc&lt;State&gt;&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;Jrd&lt;Resource&gt;&gt; {
+    <span class="kw">let </span>Query(Params { resource }) = <span class="kw">match </span>params {
+        <span class="prelude-val">Some</span>(params) =&gt; params,
+        <span class="prelude-val">None </span>=&gt; {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::StatusAndMessage {
+                status: StatusCode::BAD_REQUEST,
+                message: <span class="string">&quot;must provide resource query param&quot;</span>,
             })
         }
     };
 
-    <span class="kw">let</span> (<span class="ident">user</span>, <span class="ident">domain</span>) <span class="op">=</span> <span class="ident">parse_webfinger_resource</span>(<span class="kw-2">&amp;</span><span class="ident">resource</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span>(user, domain) = parse_webfinger_resource(<span class="kw-2">&amp;</span>resource)<span class="question-mark">?</span>;
 
-    <span class="kw">if</span> <span class="ident">user</span> <span class="op">!</span><span class="op">=</span> <span class="string">&quot;relay&quot;</span> <span class="op">|</span><span class="op">|</span> <span class="ident">domain</span> <span class="op">!</span><span class="op">=</span> <span class="ident">host</span> {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::StatusAndMessage</span> {
-            <span class="ident">status</span>: <span class="ident">StatusCode::NOT_FOUND</span>,
-            <span class="ident">message</span>: <span class="string">&quot;user not found&quot;</span>,
+    <span class="kw">if </span>user != <span class="string">&quot;relay&quot; </span>|| domain != host {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::StatusAndMessage {
+            status: StatusCode::NOT_FOUND,
+            message: <span class="string">&quot;user not found&quot;</span>,
         });
     }
 
-    <span class="kw">let</span> <span class="ident">href</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}/actor&quot;</span>, <span class="ident">base_url</span>());
+    <span class="kw">let </span>href = <span class="macro">format!</span>(<span class="string">&quot;{}/actor&quot;</span>, state.cfg.base_url());
 
-    <span class="prelude-val">Ok</span>(<span class="ident">Jrd</span>(<span class="ident">Resource</span> {
-        <span class="ident">aliases</span>: <span class="macro">vec!</span>[<span class="ident">href</span>.<span class="ident">clone</span>()],
-        <span class="ident">subject</span>: <span class="ident">resource</span>.<span class="ident">clone</span>(),
-        <span class="ident">links</span>: <span class="macro">vec!</span>[
-            <span class="ident">Link</span> {
-                <span class="ident">href</span>: <span class="ident">href</span>.<span class="ident">clone</span>(),
-                <span class="ident">rel</span>: <span class="string">&quot;self&quot;</span>.<span class="ident">to_owned</span>(),
-                <span class="ident">ty</span>: <span class="string">r#&quot;application/ld+json; profile=\&quot;https://www.w3.org/ns/activitystreams\&quot;&quot;#</span>
-                    .<span class="ident">to_owned</span>(),
+    <span class="prelude-val">Ok</span>(Jrd(Resource {
+        aliases: <span class="macro">vec!</span>[href.clone()],
+        subject: resource.clone(),
+        links: <span class="macro">vec!</span>[
+            Link {
+                href: href.clone(),
+                rel: <span class="string">&quot;self&quot;</span>.to_owned(),
+                ty: <span class="string">r#&quot;application/ld+json; profile=\&quot;https://www.w3.org/ns/activitystreams\&quot;&quot;#
+                    </span>.to_owned(),
             },
-            <span class="ident">Link</span> {
-                <span class="ident">href</span>,
-                <span class="ident">rel</span>: <span class="string">&quot;self&quot;</span>.<span class="ident">to_owned</span>(),
-                <span class="ident">ty</span>: <span class="string">&quot;application/activity+json&quot;</span>.<span class="ident">to_owned</span>(),
+            Link {
+                href,
+                rel: <span class="string">&quot;self&quot;</span>.to_owned(),
+                ty: <span class="string">&quot;application/activity+json&quot;</span>.to_owned(),
             },
         ],
     }))
 }
 
-<span class="comment">// parse a resource param of the form: /.well-known/webfinger?resource=acct:bob@my-example.com</span>
-<span class="kw">fn</span> <span class="ident">parse_webfinger_resource</span>(<span class="ident">resource</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="kw-2">&amp;</span><span class="ident">str</span>)<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">uri</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">resource</span>.<span class="ident">strip_prefix</span>(<span class="string">&quot;acct:&quot;</span>) {
-        <span class="prelude-val">Some</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+<span class="comment">// parse a resource param of the form: /.well-known/webfinger?resource=acct:bob@my-example.com
+</span><span class="kw">fn </span>parse_webfinger_resource(resource: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str)&gt; {
+    <span class="kw">let </span>uri = <span class="kw">match </span>resource.strip_prefix(<span class="string">&quot;acct:&quot;</span>) {
+        <span class="prelude-val">Some</span>(s) =&gt; s,
 
-        <span class="prelude-val">None</span> =&gt; {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::MalformedWebfingerResource</span> {
-                <span class="ident">resource</span>: <span class="ident">resource</span>.<span class="ident">to_owned</span>(),
+        <span class="prelude-val">None </span>=&gt; {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MalformedWebfingerResource {
+                resource: resource.to_owned(),
             })
         }
     };
 
-    <span class="kw">let</span> <span class="ident">parts</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">uri</span>.<span class="ident">split</span>(<span class="string">&#39;@&#39;</span>).<span class="ident">collect</span>();
-    <span class="kw">if</span> <span class="ident">parts</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">2</span> {
-        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::MalformedWebfingerUri</span> {
-            <span class="ident">uri</span>: <span class="ident">uri</span>.<span class="ident">to_owned</span>(),
+    <span class="kw">let </span>parts: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = uri.split(<span class="string">&#39;@&#39;</span>).collect();
+    <span class="kw">if </span>parts.len() != <span class="number">2 </span>{
+        <span class="kw">return </span><span class="prelude-val">Err</span>(Error::MalformedWebfingerUri {
+            uri: uri.to_owned(),
         });
     };
 
-    <span class="kw">let</span> <span class="ident">user</span> <span class="op">=</span> <span class="ident">parts</span>[<span class="number">0</span>];
-    <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="ident">parts</span>[<span class="number">1</span>];
+    <span class="kw">let </span>user = parts[<span class="number">0</span>];
+    <span class="kw">let </span>domain = parts[<span class="number">1</span>];
 
-    <span class="prelude-val">Ok</span>((<span class="ident">user</span>, <span class="ident">domain</span>))
+    <span class="prelude-val">Ok</span>((user, domain))
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">simple_test_case::test_case</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>simple_test_case::test_case;
 
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;acct:alice@example.com&quot;</span>, <span class="prelude-val">Ok</span>((<span class="string">&quot;alice&quot;</span>, <span class="string">&quot;example.com&quot;</span>)); <span class="string">&quot;valid&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;alice@example.com&quot;</span>, <span class="prelude-val">Err</span>(<span class="ident">Error::MalformedWebfingerResource</span> { <span class="ident">resource</span>: <span class="string">&quot;alice@example.com&quot;</span>.<span class="ident">into</span>() }); <span class="string">&quot;missing prefix&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;acct:alice@example@com&quot;</span>, <span class="prelude-val">Err</span>(<span class="ident">Error::MalformedWebfingerUri</span> { <span class="ident">uri</span>: <span class="string">&quot;alice@example@com&quot;</span>.<span class="ident">into</span>() }); <span class="string">&quot;multiple at&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test_case</span>(<span class="string">&quot;acct:alice.example.com&quot;</span>, <span class="prelude-val">Err</span>(<span class="ident">Error::MalformedWebfingerUri</span> { <span class="ident">uri</span>: <span class="string">&quot;alice.example.com&quot;</span>.<span class="ident">into</span>() }); <span class="string">&quot;no at&quot;</span>)]</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">parse_webfinger_resource_works</span>(<span class="ident">resource</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">expected</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="kw-2">&amp;</span><span class="ident">str</span>)<span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">parse_webfinger_resource</span>(<span class="ident">resource</span>);
+    <span class="attribute">#[test_case(<span class="string">&quot;acct:alice@example.com&quot;</span>, <span class="prelude-val">Ok</span>((<span class="string">&quot;alice&quot;</span>, <span class="string">&quot;example.com&quot;</span>)); <span class="string">&quot;valid&quot;</span>)]
+    #[test_case(<span class="string">&quot;alice@example.com&quot;</span>, <span class="prelude-val">Err</span>(Error::MalformedWebfingerResource { resource: <span class="string">&quot;alice@example.com&quot;</span>.into() }); <span class="string">&quot;missing prefix&quot;</span>)]
+    #[test_case(<span class="string">&quot;acct:alice@example@com&quot;</span>, <span class="prelude-val">Err</span>(Error::MalformedWebfingerUri { uri: <span class="string">&quot;alice@example@com&quot;</span>.into() }); <span class="string">&quot;multiple at&quot;</span>)]
+    #[test_case(<span class="string">&quot;acct:alice.example.com&quot;</span>, <span class="prelude-val">Err</span>(Error::MalformedWebfingerUri { uri: <span class="string">&quot;alice.example.com&quot;</span>.into() }); <span class="string">&quot;no at&quot;</span>)]
+    #[test]
+    </span><span class="kw">fn </span>parse_webfinger_resource_works(resource: <span class="kw-2">&amp;</span>str, expected: <span class="prelude-ty">Result</span>&lt;(<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str)&gt;) {
+        <span class="kw">let </span>res = parse_webfinger_resource(resource);
 
-        <span class="macro">assert_eq!</span>(<span class="ident">res</span>, <span class="ident">expected</span>)
+        <span class="macro">assert_eq!</span>(res, expected)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="actiserve" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="actiserve" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

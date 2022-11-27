@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":[["Activity","A helper for returning an activitypub JSON document with the correct content header"],["Jrd","A helper for returning a JSON jrd document with the correct content header"]]};

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/state.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>state.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../actiserve/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/state.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>state.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../actiserve/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../actiserve/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -156,163 +156,201 @@
 <span id="156">156</span>
 <span id="157">157</span>
 <span id="158">158</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Server shared state</span>
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">client</span>::{<span class="ident">ActivityPubClient</span>, <span class="ident">Actor</span>},
-    <span class="ident">util::host_from_uri</span>,
-    <span class="ident">Error</span>, <span class="prelude-ty">Result</span>,
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Server shared state
+</span><span class="kw">use crate</span>::{
+    client::{ActivityPubClient, Actor},
+    config::Config,
+    util::host_from_uri,
+    Error, <span class="prelude-ty">Result</span>,
 };
-<span class="kw">use</span> <span class="ident">acidjson::AcidJson</span>;
-<span class="kw">use</span> <span class="ident">axum::http::StatusCode</span>;
-<span class="kw">use</span> <span class="ident">futures::future::try_join_all</span>;
-<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">path::PathBuf</span>, <span class="ident">sync::Mutex</span>};
-<span class="kw">use</span> <span class="ident">tracing::trace</span>;
+<span class="kw">use </span>acidjson::AcidJson;
+<span class="kw">use </span>axum::http::StatusCode;
+<span class="kw">use </span>futures::future::try_join_all;
+<span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>std::{collections::HashMap, path::PathBuf, sync::Mutex};
+<span class="kw">use </span>tracing::trace;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">State</span> {
-    <span class="kw">pub</span> <span class="ident">db</span>: <span class="ident">Db</span>,
-    <span class="kw">pub</span> <span class="ident">client</span>: <span class="ident">ActivityPubClient</span>,
-    <span class="ident">object_cache</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>State {
+    <span class="kw">pub </span>cfg: Config,
+    <span class="kw">pub </span>db: Db,
+    <span class="kw">pub </span>client: ActivityPubClient,
+    object_cache: Mutex&lt;HashMap&lt;String, String&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">State</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">db</span>: <span class="ident">Db</span>, <span class="ident">private_key_pem</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">db</span>,
-            <span class="ident">client</span>: <span class="ident">ActivityPubClient::new_with_priv_key</span>(<span class="ident">private_key_pem</span>),
-            <span class="ident">object_cache</span>: <span class="ident">Default::default</span>(),
+<span class="kw">impl </span>State {
+    <span class="kw">pub fn </span>new(cfg: Config, db: Db, private_key_pem: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>client = ActivityPubClient::new_with_priv_key(private_key_pem, cfg.base_url());
+
+        <span class="self">Self </span>{
+            cfg,
+            db,
+            client,
+            object_cache: Default::default(),
         }
     }
 
-    <span class="attribute">#[<span class="ident">tracing::instrument</span>(<span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">message</span>), <span class="ident">err</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">post_for_actor</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Serialize</span> <span class="op">+</span> <span class="ident">Clone</span><span class="op">&gt;</span>(
+    <span class="attribute">#[tracing::instrument(skip(<span class="self">self</span>, message), err)]
+    </span><span class="kw">pub async fn </span>post_for_actor&lt;T: Serialize + Clone&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">actor</span>: <span class="kw-2">&amp;</span><span class="ident">Actor</span>,
-        <span class="ident">object_id</span>: <span class="ident">String</span>,
-        <span class="ident">cache_value</span>: <span class="ident">String</span>,
-        <span class="ident">message</span>: <span class="ident">T</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">inboxes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">inboxes_for_actor</span>(<span class="ident">actor</span>, <span class="kw-2">&amp;</span><span class="ident">object_id</span>)<span class="question-mark">?</span>;
-        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">inboxes</span>, <span class="string">&quot;posting message to all inboxes&quot;</span>);
+        actor: <span class="kw-2">&amp;</span>Actor,
+        object_id: String,
+        cache_value: String,
+        message: T,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>inboxes = <span class="self">self</span>.db.inboxes_for_actor(actor, <span class="kw-2">&amp;</span>object_id)<span class="question-mark">?</span>;
+        <span class="macro">trace!</span>(<span class="question-mark">?</span>inboxes, <span class="string">&quot;posting message to all inboxes&quot;</span>);
 
-        <span class="comment">// TODO: this will need to be smarter</span>
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">try_join_all</span>(
-            <span class="ident">inboxes</span>
-                .<span class="ident">into_iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">inbox</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">client</span>.<span class="ident">json_post</span>(<span class="ident">inbox</span>, <span class="ident">message</span>.<span class="ident">clone</span>())),
+        <span class="comment">// TODO: this will need to be smarter
+        </span><span class="kw">let </span>res = try_join_all(
+            inboxes
+                .into_iter()
+                .map(|inbox| <span class="self">self</span>.client.json_post(inbox, message.clone())),
         )
-        .<span class="kw">await</span>
-        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ());
+        .<span class="kw">await
+        </span>.map(|<span class="kw">_</span>| ());
 
-        <span class="self">self</span>.<span class="ident">cache_object</span>(<span class="ident">object_id</span>, <span class="ident">cache_value</span>);
+        <span class="self">self</span>.cache_object(object_id, cache_value);
 
-        <span class="ident">res</span>
+        res
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_from_cache</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">object_cache</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>().<span class="ident">get</span>(<span class="ident">id</span>).<span class="ident">cloned</span>()
+    <span class="kw">pub fn </span>get_from_cache(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="self">self</span>.object_cache.lock().unwrap().get(id).cloned()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cache_object</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">object_id</span>: <span class="ident">String</span>, <span class="ident">activity_id</span>: <span class="ident">String</span>) {
-        <span class="self">self</span>.<span class="ident">object_cache</span>
-            .<span class="ident">lock</span>()
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">insert</span>(<span class="ident">object_id</span>, <span class="ident">activity_id</span>);
+    <span class="kw">pub fn </span>cache_object(<span class="kw-2">&amp;</span><span class="self">self</span>, object_id: String, activity_id: String) {
+        <span class="self">self</span>.object_cache
+            .lock()
+            .unwrap()
+            .insert(object_id, activity_id);
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Db</span> {
-    <span class="comment">// map of host to inbox</span>
-    <span class="ident">inboxes</span>: <span class="ident">AcidJson</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+<span class="attribute">#[derive(Debug)]
+</span><span class="kw">pub struct </span>Db {
+    <span class="comment">// map of host to inbox
+    </span>inboxes: AcidJson&lt;HashMap&lt;String, String&gt;&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">Db</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="kw-2">mut</span> <span class="ident">path</span>: <span class="ident">PathBuf</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">std::fs::create_dir_all</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>).<span class="ident">is_err</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::StatusAndMessage</span> {
-                <span class="ident">status</span>: <span class="ident">StatusCode::INTERNAL_SERVER_ERROR</span>,
-                <span class="ident">message</span>: <span class="string">&quot;unable to create data dir&quot;</span>,
+<span class="kw">impl </span>Db {
+    <span class="kw">pub fn </span>new(<span class="kw-2">mut </span>path: PathBuf) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">if </span>std::fs::create_dir_all(<span class="kw-2">&amp;</span>path).is_err() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::StatusAndMessage {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: <span class="string">&quot;unable to create data dir&quot;</span>,
             });
         }
-        <span class="ident">path</span>.<span class="ident">push</span>(<span class="string">&quot;statedb.json&quot;</span>);
-        <span class="kw">if</span> <span class="ident">std::fs::read</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>).<span class="ident">is_err</span>() <span class="op">&amp;&amp;</span> <span class="ident">std::fs::write</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>, <span class="string">b&quot;{}&quot;</span>).<span class="ident">is_err</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Error::StatusAndMessage</span> {
-                <span class="ident">status</span>: <span class="ident">StatusCode::INTERNAL_SERVER_ERROR</span>,
-                <span class="ident">message</span>: <span class="string">&quot;unable to create initial state db&quot;</span>,
+        path.push(<span class="string">&quot;statedb.json&quot;</span>);
+        <span class="kw">if </span>std::fs::read(<span class="kw-2">&amp;</span>path).is_err() &amp;&amp; std::fs::write(<span class="kw-2">&amp;</span>path, <span class="string">b&quot;{}&quot;</span>).is_err() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::StatusAndMessage {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: <span class="string">&quot;unable to create initial state db&quot;</span>,
             });
         }
 
-        <span class="kw">match</span> <span class="ident">AcidJson::open</span>(<span class="ident">path</span>.<span class="ident">as_path</span>()) {
-            <span class="prelude-val">Ok</span>(<span class="ident">db</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">inboxes</span>: <span class="ident">db</span> }),
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">Error::StatusAndMessage</span> {
-                <span class="ident">status</span>: <span class="ident">StatusCode::INTERNAL_SERVER_ERROR</span>,
-                <span class="ident">message</span>: <span class="string">&quot;unable to open state db&quot;</span>,
+        <span class="kw">match </span>AcidJson::open(path.as_path()) {
+            <span class="prelude-val">Ok</span>(db) =&gt; <span class="prelude-val">Ok</span>(<span class="self">Self </span>{ inboxes: db }),
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(Error::StatusAndMessage {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: <span class="string">&quot;unable to open state db&quot;</span>,
             }),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_inbox_if_unknown</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">inbox</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">host</span> <span class="op">=</span> <span class="ident">host_from_uri</span>(<span class="kw-2">&amp;</span><span class="ident">inbox</span>)<span class="question-mark">?</span>;
+    <span class="kw">pub fn </span>add_inbox_if_unknown(<span class="kw-2">&amp;</span><span class="self">self</span>, inbox: String) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
+        <span class="kw">let </span>host = host_from_uri(<span class="kw-2">&amp;</span>inbox)<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inboxes</span>.<span class="ident">read</span>().<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">inbox</span>) {
+        <span class="kw">if </span><span class="self">self</span>.inboxes.read().contains_key(<span class="kw-2">&amp;</span>inbox) {
             <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">inboxes</span>.<span class="ident">write</span>().<span class="ident">insert</span>(<span class="ident">host</span>, <span class="ident">inbox</span>);
+        } <span class="kw">else </span>{
+            <span class="self">self</span>.inboxes.write().insert(host, inbox);
             <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_inbox</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">inbox</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">host</span> <span class="op">=</span> <span class="ident">host_from_uri</span>(<span class="ident">inbox</span>)<span class="question-mark">?</span>;
+    <span class="kw">pub fn </span>remove_inbox(<span class="kw-2">&amp;</span><span class="self">self</span>, inbox: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
+        <span class="kw">let </span>host = host_from_uri(inbox)<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.<span class="ident">inboxes</span>
-            .<span class="ident">write</span>()
-            .<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">host</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">Error::StatusAndMessage</span> {
-                <span class="ident">status</span>: <span class="ident">StatusCode::NOT_FOUND</span>,
-                <span class="ident">message</span>: <span class="string">&quot;unknown inbox&quot;</span>,
+        <span class="self">self</span>.inboxes
+            .write()
+            .remove(<span class="kw-2">&amp;</span>host)
+            .ok_or(Error::StatusAndMessage {
+                status: StatusCode::NOT_FOUND,
+                message: <span class="string">&quot;unknown inbox&quot;</span>,
             })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inbox</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="ident">host_from_uri</span>(<span class="ident">domain</span>).<span class="ident">ok</span>()<span class="question-mark">?</span>;
+    <span class="kw">pub fn </span>inbox(<span class="kw-2">&amp;</span><span class="self">self</span>, domain: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+        <span class="kw">let </span>domain = host_from_uri(domain).ok()<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.<span class="ident">inboxes</span>.<span class="ident">read</span>().<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>).<span class="ident">cloned</span>()
+        <span class="self">self</span>.inboxes.read().get(<span class="kw-2">&amp;</span>domain).cloned()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inboxes_for_actor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">actor</span>: <span class="kw-2">&amp;</span><span class="ident">Actor</span>, <span class="ident">object_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">origin_host</span> <span class="op">=</span> <span class="ident">host_from_uri</span>(<span class="ident">object_id</span>)<span class="question-mark">?</span>;
+    <span class="kw">pub fn </span>inboxes_for_actor(<span class="kw-2">&amp;</span><span class="self">self</span>, actor: <span class="kw-2">&amp;</span>Actor, object_id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;&gt; {
+        <span class="kw">let </span>origin_host = host_from_uri(object_id)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">inboxes</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">inboxes</span>
-            .<span class="ident">read</span>()
-            .<span class="ident">iter</span>()
-            .<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">host</span>, <span class="ident">inbox</span>)<span class="op">|</span> <span class="ident">inbox</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">actor</span>.<span class="ident">inbox</span> <span class="op">&amp;&amp;</span> <span class="ident">host</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">origin_host</span>)
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">inbox</span>)<span class="op">|</span> <span class="ident">inbox</span>.<span class="ident">to_owned</span>())
-            .<span class="ident">collect</span>();
+        <span class="kw">let </span>inboxes = <span class="self">self
+            </span>.inboxes
+            .read()
+            .iter()
+            .filter(|<span class="kw-2">&amp;</span>(host, inbox)| inbox != <span class="kw-2">&amp;</span>actor.inbox &amp;&amp; host != <span class="kw-2">&amp;</span>origin_host)
+            .map(|(<span class="kw">_</span>, inbox)| inbox.to_owned())
+            .collect();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">inboxes</span>)
+        <span class="prelude-val">Ok</span>(inboxes)
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::config::ActivityPubConfig;
+    <span class="kw">use </span>std::net::Ipv4Addr;
 
-    <span class="kw">impl</span> <span class="ident">State</span> {
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_with_test_key</span>(<span class="ident">db</span>: <span class="ident">Db</span>) -&gt; <span class="self">Self</span> {
-            <span class="self">Self</span> {
-                <span class="ident">db</span>,
-                <span class="ident">client</span>: <span class="ident">ActivityPubClient::new_with_test_key</span>(),
-                <span class="ident">object_cache</span>: <span class="ident">Default::default</span>(),
+    <span class="kw">impl </span>State {
+        <span class="kw">pub fn </span>new_with_test_key(db: Db) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                cfg: Config {
+                    listen: Ipv4Addr::new(<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>),
+                    port: <span class="number">4242</span>,
+                    data_dir: PathBuf::from(<span class="string">&quot;.&quot;</span>),
+                    private_key_path: PathBuf::from(<span class="string">&quot;private-key.pem&quot;</span>),
+                    activity_pub: ActivityPubConfig {
+                        host: <span class="string">&quot;localhost&quot;</span>.into(),
+                        blocked_instances: <span class="macro">vec!</span>[],
+                        allow_list: <span class="bool-val">false</span>,
+                        allowed_instances: <span class="macro">vec!</span>[],
+                    },
+                },
+                db,
+                client: ActivityPubClient::new_with_test_key(),
+                object_cache: Default::default(),
             }
         }
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-            <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">inboxes</span>.<span class="ident">write</span>().<span class="ident">clear</span>();
+        <span class="kw">pub fn </span>clear(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+            <span class="self">self</span>.db.inboxes.write().clear();
         }
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="actiserve" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="actiserve" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
