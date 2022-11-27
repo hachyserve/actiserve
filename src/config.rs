@@ -17,11 +17,12 @@ pub struct Config {
 }
 
 impl Config {
-    /// Try to load our config file if it exists, otherwise write out our
-    /// default config and return that.
+    /// Load server config from the given path.
     ///
-    /// Panics if the config file that is present is invalid or if we are unable
-    /// to write out our default config.
+    /// # Panics
+    ///
+    /// This method will panic if the path given is invalid or if the file is
+    /// not valid as a YAML [Config] file.
     pub fn load(path: PathBuf) -> Self {
         match fs::read_to_string(&path) {
             Ok(content) => serde_yaml::from_str(&content)
@@ -50,15 +51,4 @@ pub struct ActivityPubConfig {
     pub allow_list: bool,
     /// Instances that should accepted. Only enforced if allowList=true
     pub allowed_instances: Vec<String>,
-}
-
-impl Default for ActivityPubConfig {
-    fn default() -> Self {
-        Self {
-            host: String::from("localhost"),
-            blocked_instances: Vec::new(),
-            allow_list: false,
-            allowed_instances: Vec::new(),
-        }
-    }
 }

@@ -147,6 +147,7 @@ impl Db {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::ActivityPubConfig;
     use std::net::Ipv4Addr;
 
     impl State {
@@ -157,7 +158,12 @@ mod tests {
                     port: 4242,
                     data_dir: PathBuf::from("."),
                     private_key_path: PathBuf::from("private-key.pem"),
-                    activity_pub: Default::default(),
+                    activity_pub: ActivityPubConfig {
+                        host: "localhost".into(),
+                        blocked_instances: vec![],
+                        allow_list: false,
+                        allowed_instances: vec![],
+                    },
                 },
                 db,
                 client: ActivityPubClient::new_with_test_key(),
