@@ -171,14 +171,17 @@ async fn handle_undo(actor: &Actor, activity: Value, state: Arc<State>) -> Resul
 
 #[cfg(test)]
 mod validation_tests {
-    use crate::state::Db;
-
     use super::*;
+    use crate::state::Db;
     use simple_test_case::test_case;
+    use std::{env::temp_dir, fs::remove_dir_all};
 
     #[tokio::test]
     async fn invalid_actor_uri_is_an_error() {
-        let db = Db::new(std::env::temp_dir()).expect("unable to create database");
+        let mut dir = temp_dir();
+        dir.push(Uuid::new_v4().to_string());
+
+        let db = Db::new(dir.clone()).expect("unable to create database");
         let state = State::new_with_test_key(db);
 
         let actor = "example.com/without/scheme".to_owned();
@@ -187,6 +190,7 @@ mod validation_tests {
         assert_eq!(res, Err(Error::InvalidUri { uri: actor }));
 
         state.clear();
+        remove_dir_all(dir).expect("to be able to clear up our temp directory");
     }
 
     #[test_case(ActivityType::Accept; "accept")]
@@ -197,7 +201,10 @@ mod validation_tests {
     #[test_case(ActivityType::Update; "update")]
     #[tokio::test]
     async fn non_follow_for_unknown_inbox_is_an_error(ty: ActivityType) {
-        let db = Db::new(std::env::temp_dir()).expect("unable to create database");
+        let mut dir = temp_dir();
+        dir.push(Uuid::new_v4().to_string());
+
+        let db = Db::new(dir.clone()).expect("unable to create database");
         let state = State::new_with_test_key(db);
         let res =
             validate_request(&Actor::test_actor("https://example.com/actor"), ty, &state).await;
@@ -209,12 +216,17 @@ mod validation_tests {
                 message: "access denied"
             })
         );
+
         state.clear();
+        remove_dir_all(dir).expect("to be able to clear up our temp directory");
     }
 
     #[tokio::test]
     async fn follow_for_unknown_inbox_is_ok() {
-        let db = Db::new(std::env::temp_dir()).expect("unable to create database");
+        let mut dir = temp_dir();
+        dir.push(Uuid::new_v4().to_string());
+
+        let db = Db::new(dir.clone()).expect("unable to create database");
         let state = State::new_with_test_key(db);
         let res = validate_request(
             &Actor::test_actor("https://example.com/actor"),
@@ -225,6 +237,7 @@ mod validation_tests {
 
         assert_eq!(res, Ok(()));
         state.clear();
+        remove_dir_all(dir).expect("to be able to clear up our temp directory");
     }
 
     #[test_case(ActivityType::Accept; "accept")]
@@ -235,7 +248,10 @@ mod validation_tests {
     #[test_case(ActivityType::Update; "update")]
     #[tokio::test]
     async fn non_follow_for_known_inbox_is_ok(ty: ActivityType) {
-        let db = Db::new(std::env::temp_dir()).expect("unable to create database");
+        let mut dir = temp_dir();
+        dir.push(Uuid::new_v4().to_string());
+
+        let db = Db::new(dir.clone()).expect("unable to create database");
         let state = State::new_with_test_key(db);
         state
             .db
@@ -247,5 +263,6 @@ mod validation_tests {
 
         assert_eq!(res, Ok(()));
         state.clear();
+        remove_dir_all(dir).expect("to be able to clear up our temp directory");
     }
 }
