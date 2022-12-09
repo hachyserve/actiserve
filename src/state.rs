@@ -1,5 +1,5 @@
 //! Server shared state
-use crate::{client::ActivityPubClient, util::host_from_uri, Error, Result};
+use crate::{client::ActivityPubClient, config::Config, util::host_from_uri, Error, Result};
 use acidjson::AcidJson;
 use axum::http::StatusCode;
 use futures::future::try_join_all;

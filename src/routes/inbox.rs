@@ -3,9 +3,7 @@ use crate::{
     signature::validate_signature,
     state::State,
     util::{host_from_uri, id_from_json},
-    Error,
-    Result,
-    State,
+    Error, Result,
 };
 use axum::{
     extract::{Extension, Host, Json, OriginalUri},
@@ -221,37 +219,13 @@ async fn handle_undo(actor: &Actor, activity: Value, state: Arc<State>) -> Resul
 
 #[cfg(test)]
 mod validation_tests {
-<<<<<<< HEAD
-=======
-    use crate::{signature::tests::test_actor, state::Db};
-
->>>>>>> 666b9b1 (actiserve uses rustypub)
     use super::*;
+
+    use crate::signature::tests::test_actor;
     use crate::state::Db;
+
     use simple_test_case::test_case;
     use std::{env::temp_dir, fs::remove_dir_all};
-
-    /*
-    #[tokio::test]
-    async fn invalid_actor_uri_is_an_error() {
-        let mut dir = temp_dir();
-        dir.push(Uuid::new_v4().to_string());
-
-        let db = Db::new(dir.clone()).expect("unable to create database");
-        let state = State::new_with_test_key(db);
-
-        let actor = "example.com/without/scheme".to_owned();
-        let res = validate_request(&test_actor(&actor), "Create", &state).await;
-
-        assert_eq!(res, Err(Error::InvalidUri { uri: actor }));
-
-        state.clear();
-<<<<<<< HEAD
-        remove_dir_all(dir).expect("to be able to clear up our temp directory");
-    }
-=======
-    }*/
->>>>>>> 666b9b1 (actiserve uses rustypub)
 
     #[test_case("Accept"; "accept")]
     #[test_case("Announce"; "announce")]
@@ -260,16 +234,11 @@ mod validation_tests {
     #[test_case("Undo"; "undo")]
     #[test_case("Update"; "update")]
     #[tokio::test]
-<<<<<<< HEAD
-    async fn non_follow_for_unknown_inbox_is_an_error(ty: ActivityType) {
+    async fn non_follow_for_unknown_inbox_is_an_error(ty: &str) {
         let mut dir = temp_dir();
         dir.push(Uuid::new_v4().to_string());
 
         let db = Db::new(dir.clone()).expect("unable to create database");
-=======
-    async fn non_follow_for_unknown_inbox_is_an_error(ty: &str) {
-        let db = Db::new(std::env::temp_dir()).expect("unable to create database");
->>>>>>> 666b9b1 (actiserve uses rustypub)
         let state = State::new_with_test_key(db);
         let res = validate_request(&test_actor("https://example.com/actor"), ty, &state).await;
 
@@ -307,16 +276,11 @@ mod validation_tests {
     #[test_case("Undo"; "undo")]
     #[test_case("Update"; "update")]
     #[tokio::test]
-<<<<<<< HEAD
-    async fn non_follow_for_known_inbox_is_ok(ty: ActivityType) {
+    async fn non_follow_for_known_inbox_is_ok(ty: &str) {
         let mut dir = temp_dir();
         dir.push(Uuid::new_v4().to_string());
 
         let db = Db::new(dir.clone()).expect("unable to create database");
-=======
-    async fn non_follow_for_known_inbox_is_ok(ty: &str) {
-        let db = Db::new(std::env::temp_dir()).expect("unable to create database");
->>>>>>> 666b9b1 (actiserve uses rustypub)
         let state = State::new_with_test_key(db);
         state
             .db

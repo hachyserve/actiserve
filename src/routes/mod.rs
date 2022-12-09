@@ -1,7 +1,9 @@
 //! Routes available on this server.
 //!
 //! We are implementing a subset of the activitypub API in order to function as a relay
-use crate::State;
+
+use crate::state::State;
+
 use axum::{
     extract::Host,
     routing::{get, post},
