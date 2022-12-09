@@ -40,6 +40,9 @@ pub enum Error {
         status: StatusCode,
         message: &'static str,
     },
+
+    #[error(transparent)]
+    RsaPksc1Error(#[from] rsa::pkcs1::Error),
 }
 
 impl IntoResponse for Error {
@@ -90,6 +93,11 @@ impl IntoResponse for Error {
             MissingSignature => (StatusCode::UNAUTHORIZED, Json(json!({ "error": error }))),
 
             StatusAndMessage { status, message } => (status, Json(json!({ "error": message }))),
+
+            RsaPksc1Error(inner) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": inner.to_string() })),
+            ),
         };
 
         (status, data).into_response()

@@ -1,14 +1,19 @@
 use crate::{
-    client::{Activity, ActivityType, Actor, IdOrObject},
     routes::extractors,
     signature::validate_signature,
     state::State,
     util::{host_from_uri, id_from_json},
-    Error, Result,
+    Error,
+    Result,
+    State,
 };
 use axum::{
     extract::{Extension, Host, Json, OriginalUri},
     http::{header::HeaderMap, StatusCode},
+};
+use rustypub::{
+    core::{ActivityBuilder, ObjectBuilder},
+    extended::{Actor, ActorBuilder},
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -19,7 +24,7 @@ use uuid::Uuid;
 #[derive(Debug, Deserialize)]
 pub struct InboxRequest {
     #[serde(rename = "type")]
-    ty: ActivityType,
+    ty: String,
     actor: String,
     activity: Value,
 }
@@ -32,30 +37,28 @@ pub async fn post(
     Extension(state): Extension<Arc<State>>,
     Json(req): Json<InboxRequest>,
 ) -> Result<extractors::Activity<Value>> {
-    use ActivityType::*;
-
     let actor = state.client.get_actor(&req.actor).await?;
 
     validate_signature(&actor, "post", uri.path(), &headers)?;
-    validate_request(&actor, req.ty, &state).await?;
+    validate_request(&actor, &req.ty, &state).await?;
 
-    match req.ty {
-        Announce | Create => handle_relay(&actor, req.activity, &host, state).await?,
-        Delete | Update => handle_forward(&actor, req.activity, state).await?,
-        Follow => handle_follow(&actor, req.activity, &host, state).await?,
-        Undo => handle_undo(&actor, req.activity, state).await?,
+    match &*req.ty {
+        "Announce" | "Create" => handle_relay(&actor, req.activity, &host, state).await?,
+        "Delete" | "Update" => handle_forward(&actor, req.activity, state).await?,
+        "Follow" => handle_follow(&actor, req.activity, &host, state).await?,
+        "Undo" => handle_undo(&actor, req.activity, state).await?,
         _ => (),
     };
 
     Ok(extractors::Activity(json!({})))
 }
-
-async fn validate_request(actor: &Actor, ty: ActivityType, state: &State) -> Result<()> {
+async fn validate_request(actor: &Actor, ty: &str, state: &State) -> Result<()> {
     // TODO: reject the request based on config (block list, banned actors / software etc)
+    let actor_id = actor.id.as_ref().expect("actor has no id");
 
-    let actor_domain = host_from_uri(&actor.id)?;
-    if ty != ActivityType::Follow && state.db.inbox(&actor_domain).is_none() {
-        info!(actor=%actor.id, "rejecting actor for trying to POST without following");
+    let actor_domain = host_from_uri(actor_id)?;
+    if ty != "Follow" && state.db.inbox(&actor_domain).is_none() {
+        info!(actor=%actor_id, "rejecting actor for trying to POST without following");
         return Err(Error::StatusAndMessage {
             status: StatusCode::UNAUTHORIZED,
             message: "access denied",
@@ -68,22 +71,41 @@ async fn validate_request(actor: &Actor, ty: ActivityType, state: &State) -> Res
 #[tracing::instrument(level = "info", skip(state, activity), err)]
 async fn handle_relay(actor: &Actor, activity: Value, host: &str, state: Arc<State>) -> Result<()> {
     let object_id = id_from_json(&activity);
+    let object_id_uri = &object_id
+        .parse::<http::Uri>()
+        .map_err(|_e| Error::InvalidUri {
+            uri: object_id.clone(),
+        })?;
+    let actor_id = actor.id.as_ref().expect("actor has no id");
 
     if let Some(activity_id) = state.get_from_cache(&object_id) {
         info!(%object_id, %activity_id, "ID has already been relayed");
         return Ok(());
     }
 
-    info!(id=%actor.id, "relaying post from actor");
+    info!(id=%actor_id, "relaying post from actor");
     let activity_id = format!("https://{host}/activities/{}", Uuid::new_v4());
-    let message = Activity {
-        context: Default::default(),
-        ty: ActivityType::Announce,
-        to: vec![format!("https://{host}/followers")],
-        object: IdOrObject::Id(object_id.clone()),
-        id: activity_id.clone(),
-        actor: format!("https://{host}/actor)"),
-    };
+    let activity_id_uri = &activity_id
+        .parse::<http::Uri>()
+        .map_err(|_e| Error::InvalidUri {
+            uri: activity_id.clone(),
+        })?;
+
+    let actor_uri = format!("https://{host}/actor")
+        .parse::<http::Uri>()
+        .map_err(|_e| Error::InvalidUri {
+            uri: format!("https://{host}/actor"),
+        })?;
+
+    let message = ActivityBuilder::new(
+        String::from("Announce"),
+        String::from("announcing post from actor"),
+    )
+    .to(vec![format!("https://{host}/followers")])
+    .id(activity_id_uri.clone())
+    .actor(ActorBuilder::new(String::from("Actor")).url(actor_uri))
+    .object(ObjectBuilder::new().id(object_id_uri.clone()))
+    .build();
 
     debug!(?message, "relaying message");
     state
@@ -100,7 +122,12 @@ async fn handle_forward(actor: &Actor, activity: Value, state: Arc<State>) -> Re
         return Ok(());
     }
 
-    info!(%actor.id, "forwarding post");
+    let actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: "actor has no id",
+    })?;
+
+    info!(%actor_id, "forwarding post");
     state
         .post_for_actor(actor, object_id.clone(), object_id, activity)
         .await
@@ -108,15 +135,19 @@ async fn handle_forward(actor: &Actor, activity: Value, state: Arc<State>) -> Re
 
 #[tracing::instrument(level = "info", skip(state, activity), err)]
 async fn handle_follow(
-    Actor {
-        id: actor_id,
-        inbox,
-        ..
-    }: &Actor,
+    actor: &Actor,
     activity: Value,
     host: &str,
     state: Arc<State>,
 ) -> Result<()> {
+    let actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: "actor has no id",
+    })?;
+    let inbox = actor.inbox.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: "actor has no inbox",
+    })?;
     if state.db.add_inbox_if_unknown(inbox.to_owned())? {
         // New inbox so follow the remote actor
         state.client.follow_actor(actor_id).await?;
@@ -126,19 +157,33 @@ async fn handle_follow(
     let object_id = id_from_json(&activity);
     let message_id = Uuid::new_v4();
 
-    let message = Activity {
-        context: Default::default(),
-        ty: ActivityType::Accept,
-        to: vec![actor_id.clone()],
-        object: IdOrObject::Object {
-            ty: ActivityType::Follow,
-            id: object_id,
-            object: our_actor.clone(),
-            actor: actor_id.clone(),
-        },
-        actor: our_actor,
-        id: format!("https://{host}/activities/{message_id}"),
-    };
+    let message = ActivityBuilder::new(String::from("Accept"), String::from("accepting follow"))
+        .to(vec![actor_id.clone()])
+        .object(
+            // FIXME: object does not have a property "actor":
+            // https://www.w3.org/TR/activitystreams-vocabulary/#types
+            // .actor
+            // object does not have a property "object":
+            // https://www.w3.org/TR/activitystreams-vocabulary/#types
+            // .object
+            ObjectBuilder::new().id(object_id
+                .parse::<http::Uri>()
+                .map_err(|_e| Error::InvalidUri { uri: object_id })?),
+        )
+        .actor(
+            ActorBuilder::new(String::from("Actor")).url(
+                our_actor
+                    .parse::<http::Uri>()
+                    .map_err(|_e| Error::InvalidUri { uri: our_actor })?,
+            ),
+        )
+        .id(format!("https://{host}/activities/{message_id}")
+            .parse::<http::Uri>()
+            .map_err(|_e| Error::StatusAndMessage {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: "failed to create parseable message id",
+            })?)
+        .build();
 
     state.client.json_post(inbox, message).await?;
 
@@ -157,10 +202,15 @@ async fn handle_undo(actor: &Actor, activity: Value, state: Arc<State>) -> Resul
         }
     };
 
+    let actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: "actor has no id",
+    })?;
+
     match ty.as_ref() {
         "Follow" => {
-            state.db.remove_inbox(&actor.id)?;
-            state.client.unfollow_actor(&actor.id).await
+            state.db.remove_inbox(actor_id)?;
+            state.client.unfollow_actor(actor_id).await
         }
 
         "Announce" => handle_forward(actor, activity, state).await,
@@ -171,11 +221,17 @@ async fn handle_undo(actor: &Actor, activity: Value, state: Arc<State>) -> Resul
 
 #[cfg(test)]
 mod validation_tests {
+<<<<<<< HEAD
+=======
+    use crate::{signature::tests::test_actor, state::Db};
+
+>>>>>>> 666b9b1 (actiserve uses rustypub)
     use super::*;
     use crate::state::Db;
     use simple_test_case::test_case;
     use std::{env::temp_dir, fs::remove_dir_all};
 
+    /*
     #[tokio::test]
     async fn invalid_actor_uri_is_an_error() {
         let mut dir = temp_dir();
@@ -185,29 +241,37 @@ mod validation_tests {
         let state = State::new_with_test_key(db);
 
         let actor = "example.com/without/scheme".to_owned();
-        let res = validate_request(&Actor::test_actor(&actor), ActivityType::Create, &state).await;
+        let res = validate_request(&test_actor(&actor), "Create", &state).await;
 
         assert_eq!(res, Err(Error::InvalidUri { uri: actor }));
 
         state.clear();
+<<<<<<< HEAD
         remove_dir_all(dir).expect("to be able to clear up our temp directory");
     }
+=======
+    }*/
+>>>>>>> 666b9b1 (actiserve uses rustypub)
 
-    #[test_case(ActivityType::Accept; "accept")]
-    #[test_case(ActivityType::Announce; "announce")]
-    #[test_case(ActivityType::Create; "create")]
-    #[test_case(ActivityType::Delete; "delete")]
-    #[test_case(ActivityType::Undo; "undo")]
-    #[test_case(ActivityType::Update; "update")]
+    #[test_case("Accept"; "accept")]
+    #[test_case("Announce"; "announce")]
+    #[test_case("Create"; "create")]
+    #[test_case("Delete"; "delete")]
+    #[test_case("Undo"; "undo")]
+    #[test_case("Update"; "update")]
     #[tokio::test]
+<<<<<<< HEAD
     async fn non_follow_for_unknown_inbox_is_an_error(ty: ActivityType) {
         let mut dir = temp_dir();
         dir.push(Uuid::new_v4().to_string());
 
         let db = Db::new(dir.clone()).expect("unable to create database");
+=======
+    async fn non_follow_for_unknown_inbox_is_an_error(ty: &str) {
+        let db = Db::new(std::env::temp_dir()).expect("unable to create database");
+>>>>>>> 666b9b1 (actiserve uses rustypub)
         let state = State::new_with_test_key(db);
-        let res =
-            validate_request(&Actor::test_actor("https://example.com/actor"), ty, &state).await;
+        let res = validate_request(&test_actor("https://example.com/actor"), ty, &state).await;
 
         assert_eq!(
             res,
@@ -228,38 +292,38 @@ mod validation_tests {
 
         let db = Db::new(dir.clone()).expect("unable to create database");
         let state = State::new_with_test_key(db);
-        let res = validate_request(
-            &Actor::test_actor("https://example.com/actor"),
-            ActivityType::Follow,
-            &state,
-        )
-        .await;
+        let res =
+            validate_request(&test_actor("https://example.com/actor"), "Follow", &state).await;
 
         assert_eq!(res, Ok(()));
         state.clear();
         remove_dir_all(dir).expect("to be able to clear up our temp directory");
     }
 
-    #[test_case(ActivityType::Accept; "accept")]
-    #[test_case(ActivityType::Announce; "announce")]
-    #[test_case(ActivityType::Create; "create")]
-    #[test_case(ActivityType::Delete; "delete")]
-    #[test_case(ActivityType::Undo; "undo")]
-    #[test_case(ActivityType::Update; "update")]
+    #[test_case("Accept"; "accept")]
+    #[test_case("Announce"; "announce")]
+    #[test_case("Create"; "create")]
+    #[test_case("Delete"; "delete")]
+    #[test_case("Undo"; "undo")]
+    #[test_case("Update"; "update")]
     #[tokio::test]
+<<<<<<< HEAD
     async fn non_follow_for_known_inbox_is_ok(ty: ActivityType) {
         let mut dir = temp_dir();
         dir.push(Uuid::new_v4().to_string());
 
         let db = Db::new(dir.clone()).expect("unable to create database");
+=======
+    async fn non_follow_for_known_inbox_is_ok(ty: &str) {
+        let db = Db::new(std::env::temp_dir()).expect("unable to create database");
+>>>>>>> 666b9b1 (actiserve uses rustypub)
         let state = State::new_with_test_key(db);
         state
             .db
             .add_inbox_if_unknown("https://example.com/actor".to_owned())
             .unwrap();
 
-        let res =
-            validate_request(&Actor::test_actor("https://example.com/actor"), ty, &state).await;
+        let res = validate_request(&test_actor("https://example.com/actor"), ty, &state).await;
 
         assert_eq!(res, Ok(()));
         state.clear();

@@ -1,12 +1,13 @@
 //! Routes available on this server.
 //!
 //! We are implementing a subset of the activitypub API in order to function as a relay
-use crate::{client::Context, state::State};
+use crate::State;
 use axum::{
     extract::Host,
     routing::{get, post},
     Extension, Router,
 };
+use rustypub::core::ContextBuilder;
 use serde_json::{json, Value};
 use std::sync::Arc;
 
@@ -31,7 +32,7 @@ pub async fn get_actor(
     Extension(state): Extension<Arc<State>>,
 ) -> extractors::Activity<Value> {
     extractors::Activity(json!({
-        "@context": Context::default(),
+        "@context": ContextBuilder::default().build(),
         "endpoints": {
             "sharedInbox": format!("https://{host}/inbox"),
         },
