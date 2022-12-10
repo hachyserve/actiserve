@@ -146,10 +146,17 @@ impl ActivityPubClient {
     pub async fn unfollow_actor(&self, actor_uri: &str) -> Result<()> {
         let base = &self.base;
         let actor: Actor = self.get_actor(actor_uri).await?;
-        info!(
-            "sending unfollow request to inbox: {:?} {:?}",
-            actor.id, actor.inbox
-        );
+
+        let actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: "actor has no id",
+        })?;
+        let actor_inbox = actor.inbox.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: "actor has no inbox",
+        })?;
+
+        info!(%actor_id, %actor_inbox, "sending unfollow request to inbox");
 
         let object_id = Uuid::new_v4();
         let message_id = Uuid::new_v4();
@@ -189,8 +196,7 @@ impl ActivityPubClient {
             .id(activity_id_uri)
             .build();
 
-        self.json_post(actor.inbox.expect("actor has no inbox"), message)
-            .await?;
+        self.json_post(actor_inbox, message).await?;
 
         Ok(())
     }

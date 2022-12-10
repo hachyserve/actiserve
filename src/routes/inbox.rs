@@ -53,7 +53,10 @@ pub async fn post(
 
 async fn validate_request(actor: &Actor, ty: &str, state: &State) -> Result<()> {
     // TODO: reject the request based on config (block list, banned actors / software etc)
-    let actor_id = actor.id.as_ref().expect("actor has no id");
+    let actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: "actor has no id",
+    })?;
 
     let actor_domain = host_from_uri(actor_id)?;
     if ty != "Follow" && state.db.inbox(&actor_domain).is_none() {
@@ -75,7 +78,10 @@ async fn handle_relay(actor: &Actor, activity: Value, host: &str, state: Arc<Sta
         .map_err(|_e| Error::InvalidUri {
             uri: object_id.clone(),
         })?;
-    let actor_id = actor.id.as_ref().expect("actor has no id");
+    let actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: "actor has no id",
+    })?;
 
     if let Some(activity_id) = state.get_from_cache(&object_id) {
         info!(%object_id, %activity_id, "ID has already been relayed");
