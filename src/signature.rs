@@ -1,4 +1,4 @@
-use crate::{client::Actor, Error, Result};
+use crate::{Error, Result};
 use axum::http::{HeaderMap, Uri};
 use chrono::Utc;
 use itertools::Itertools;
@@ -8,6 +8,7 @@ use rsa::{
     signature::{RandomizedSigner, Signature as _, Verifier},
     RsaPublicKey,
 };
+use rustypub::extended::Actor;
 use sha2::{Digest, Sha256, Sha512};
 use std::{collections::HashMap, convert::TryInto};
 use tracing::debug;
@@ -198,6 +199,7 @@ pub(crate) mod tests {
         pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey},
         RsaPrivateKey,
     };
+    use rustypub::extended::{ActorBuilder, PublicKeyInfo};
 
     // A valid but low bit size private key for use in running unit tests
     // without needing to generate one on demand.
@@ -274,6 +276,18 @@ JHDXEfYsCzSikhI33KHhsxu0yf168jlNorlgT8Yzax2y5QkpqbtFAgMBAAE=
         assert!(res.is_ok())
     }
 
+    pub fn test_actor(id: &str) -> Actor {
+        ActorBuilder::new("test_actor".to_owned())
+            .id(id.parse::<Uri>().unwrap())
+            .inbox("https://example.com/inbox".to_owned())
+            .public_key_info(PublicKeyInfo {
+                id: id.to_owned(),
+                owner: "self".to_owned(),
+                public_key_pem: TEST_PUB_KEY.to_owned(),
+            })
+            .build()
+    }
+
     #[test]
     fn we_can_verify_our_own_signatures() {
         let uri = "https://example.com/inbox";
@@ -281,7 +295,7 @@ JHDXEfYsCzSikhI33KHhsxu0yf168jlNorlgT8Yzax2y5QkpqbtFAgMBAAE=
         let headers = sign_test_req(uri, data);
 
         // Will provide the TEST_PUB_KEY public key for verification
-        let actor = Actor::test_actor("https://example.com/actor");
+        let actor = test_actor("https://example.com/actor");
 
         let res = validate_signature(&actor, "post", "/inbox", &headers);
         assert_eq!(res, Ok(()));

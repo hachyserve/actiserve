@@ -2,11 +2,15 @@
 use crate::{signature::sign_request_headers, util::header_val, Error, Result};
 use reqwest::{header, Client, Response, StatusCode};
 use rsa::{
-    pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey, EncodeRsaPublicKey, LineEnding},
+    pkcs1::{DecodeRsaPrivateKey, EncodeRsaPublicKey, LineEnding},
     pkcs1v15::SigningKey,
     RsaPrivateKey, RsaPublicKey,
 };
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use rustypub::{
+    core::{ActivityBuilder, ObjectBuilder},
+    extended::{Actor, ActorBuilder},
+};
+use serde::{de::DeserializeOwned, Serialize};
 use sha2::Sha256;
 use tracing::{error, info};
 use uuid::Uuid;
@@ -97,47 +101,102 @@ impl ActivityPubClient {
     }
 
     pub async fn follow_actor(&self, actor_uri: &str) -> Result<()> {
-        let Actor { id, inbox, .. } = self.get_actor(actor_uri).await?;
         let base = &self.base;
-        info!(%id, %inbox, "sending follow request to inbox");
+        let actor: Actor = self.get_actor(actor_uri).await?;
+        let actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: "actor has no id",
+        })?;
+        let actor_inbox = actor.inbox.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: "actor has no id",
+        })?;
+        let id = actor_id
+            .parse::<http::Uri>()
+            .map_err(|_e| Error::InvalidUri {
+                uri: actor_id.clone(),
+            })?;
+        info!(?id, inbox=?actor_inbox, "sending follow request to inbox");
 
         let message_id = Uuid::new_v4();
-        let message = Activity {
-            context: Context::default(),
-            ty: ActivityType::Follow,
-            to: vec![id.clone()],
-            object: IdOrObject::Id(id),
-            id: format!("https://{base}/activities/{message_id}"),
-            actor: format!("https://{base}/actor)"),
-        };
+        let message_id_uri = format!("https://{base}/activities/{message_id}");
+        let actor_uri = format!("https://{base}/actor");
+        let message = ActivityBuilder::new(String::from("Follow"), String::from("Following actor"))
+            .actor(
+                ActorBuilder::new(String::from("Actor")).url(
+                    actor_uri
+                        .parse::<http::Uri>()
+                        .map_err(|_e| Error::InvalidUri { uri: actor_uri })?,
+                ),
+            )
+            .to(vec![actor_id.clone()])
+            .object(ObjectBuilder::new().id(id))
+            .id(message_id_uri
+                .parse::<http::Uri>()
+                .map_err(|_e| Error::InvalidUri {
+                    uri: message_id_uri,
+                })?)
+            .build();
 
-        self.json_post(inbox, message).await?;
+        self.json_post(actor_inbox, message).await?;
 
         Ok(())
     }
 
     pub async fn unfollow_actor(&self, actor_uri: &str) -> Result<()> {
-        let Actor { id, inbox, .. } = self.get_actor(actor_uri).await?;
         let base = &self.base;
-        info!(%id, %inbox, "sending unfollow request to inbox");
+        let actor: Actor = self.get_actor(actor_uri).await?;
+
+        let actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: "actor has no id",
+        })?;
+        let actor_inbox = actor.inbox.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: "actor has no inbox",
+        })?;
+
+        info!(%actor_id, %actor_inbox, "sending unfollow request to inbox");
 
         let object_id = Uuid::new_v4();
         let message_id = Uuid::new_v4();
-        let message = Activity {
-            context: Context::default(),
-            ty: ActivityType::Undo,
-            to: vec![actor_uri.to_owned()],
-            object: IdOrObject::Object {
-                ty: ActivityType::Follow,
-                object: actor_uri.to_owned(),
-                actor: actor_uri.to_owned(),
-                id: format!("https://{base}/activities/{object_id}"),
-            },
-            id: format!("https://{base}/activities/{message_id}"),
-            actor: format!("https://{base}/actor)"),
-        };
+        let activity_id = format!("https://{base}/activities/{message_id}");
+        let activity_id_uri = activity_id
+            .parse::<http::Uri>()
+            .map_err(|_e| Error::InvalidUri { uri: activity_id })?;
+        let object_id = format!("https://{base}/activities/{object_id}");
+        let object_id_uri = object_id
+            .parse::<http::Uri>()
+            .map_err(|_e| Error::InvalidUri { uri: object_id })?;
 
-        self.json_post(inbox, message).await?;
+        let message = ActivityBuilder::new(String::from("Undo"), String::from("Unfollow actor"))
+            .actor(
+                ActorBuilder::new(String::from("Actor")).url(
+                    format!("https://{base}/actor")
+                        .parse::<http::Uri>()
+                        .map_err(|_e| Error::InvalidUri {
+                            uri: format!("https://{base}/actor"),
+                        })?,
+                ),
+            )
+            .to(vec![actor_uri.to_owned()])
+            .object(
+                // FIXME: object does not have a property "actor":
+                // https://www.w3.org/TR/activitystreams-vocabulary/#types
+                // .actor
+                // object does not have a property "object":
+                // https://www.w3.org/TR/activitystreams-vocabulary/#types
+                // .object
+                // note that the relay we copied from was not entirely correct so
+                // we need to reevaluate these payloads anyway.
+                ObjectBuilder::new()
+                    .object_type(String::from("Follow"))
+                    .id(object_id_uri),
+            )
+            .id(activity_id_uri)
+            .build();
+
+        self.json_post(actor_inbox, message).await?;
 
         Ok(())
     }
@@ -160,151 +219,14 @@ fn new_priv_key() -> RsaPrivateKey {
     RsaPrivateKey::new(&mut rand::thread_rng(), KEY_LEN).expect("failed to generate a key")
 }
 
-// NOTE: A subset of the rustypub Actor<'a> struct that can implement DeserializeOwned
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Actor {
-    pub id: String,
-    pub inbox: String,
-    #[serde(rename = "publicKey")]
-    pub public_key_info: PublickKeyInfo,
-}
-
-impl Actor {
-    pub fn key(&self) -> Result<RsaPublicKey> {
-        RsaPublicKey::from_pkcs1_pem(&self.public_key_info.public_key_pem).map_err(|e| {
-            Error::InvalidPublicKey {
-                error: e.to_string(),
-            }
-        })
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PublickKeyInfo {
-    id: String,
-    owner: String,
-    public_key_pem: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ActivityType {
-    Accept,
-    Announce,
-    Create,
-    Delete,
-    Follow,
-    Undo,
-    Update,
-}
-
-// FIXME: according to the spec this can also be an object or an array of a string and (one or more?) object(s)?
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct Context(String);
-
-impl Default for Context {
-    fn default() -> Self {
-        Self("https://www.w3.org/ns/activitystreams".to_owned())
-    }
-}
-
-// Not a full implementation of an activitypub Activity: just enough for our purposes
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Activity {
-    #[serde(rename = "@context")]
-    pub context: Context,
-    #[serde(rename = "type")]
-    pub ty: ActivityType,
-    pub to: Vec<String>,
-    pub actor: String,
-    pub object: IdOrObject,
-    pub id: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum IdOrObject {
-    Id(String),
-
-    Object {
-        #[serde(rename = "type")]
-        ty: ActivityType,
-        id: String,
-        actor: String,
-        object: String,
-    },
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::signature::tests::{TEST_PRIV_KEY, TEST_PUB_KEY};
-    use serde_json::json;
+    use crate::signature::tests::TEST_PRIV_KEY;
 
     impl ActivityPubClient {
         pub fn new_with_test_key() -> Self {
             Self::new_with_priv_key(TEST_PRIV_KEY, "127.0.0.1:4242".to_string())
         }
-    }
-
-    impl Actor {
-        pub fn test_actor(id: &str) -> Self {
-            Self {
-                id: id.to_owned(),
-                inbox: "https://example.com/inbox".to_owned(),
-                public_key_info: PublickKeyInfo {
-                    id: id.to_owned(),
-                    owner: "self".to_owned(),
-                    public_key_pem: TEST_PUB_KEY.to_owned(),
-                },
-            }
-        }
-    }
-
-    const ID: &str = "foo";
-    const MESSAGE_ID: &str = "https://example.com/activities/message_id";
-    const ACTOR: &str = "https://example.com/actor";
-
-    #[test]
-    fn activity_serialises_with_id() {
-        let raw = json!({
-            "@context": "https://www.w3.org/ns/activitystreams",
-            "type": "Follow",
-            "to": [ID],
-            "object": ID,
-            "id": MESSAGE_ID,
-            "actor": ACTOR,
-        });
-
-        let deserialized = serde_json::from_value::<Activity>(raw.clone());
-        assert!(deserialized.is_ok());
-
-        let serialized = serde_json::to_value(&deserialized.unwrap()).expect("to serialize");
-        assert_eq!(serialized, raw);
-    }
-
-    #[test]
-    fn activity_serialises_with_object() {
-        let raw = json!({
-            "@context": "https://www.w3.org/ns/activitystreams",
-            "type": "Follow",
-            "to": [ID],
-            "object": {
-              "type": "Follow",
-              "object": ACTOR,
-              "actor": ACTOR,
-              "id": ID
-            },
-            "id": MESSAGE_ID,
-            "actor": ACTOR,
-        });
-
-        let deserialized = serde_json::from_value::<Activity>(raw.clone());
-        assert!(deserialized.is_ok());
-
-        let serialized = serde_json::to_value(&deserialized.unwrap()).expect("to serialize");
-        assert_eq!(serialized, raw);
     }
 }

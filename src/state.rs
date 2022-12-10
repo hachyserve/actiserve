@@ -1,13 +1,9 @@
 //! Server shared state
-use crate::{
-    client::{ActivityPubClient, Actor},
-    config::Config,
-    util::host_from_uri,
-    Error, Result,
-};
+use crate::{client::ActivityPubClient, config::Config, util::host_from_uri, Error, Result};
 use acidjson::AcidJson;
 use axum::http::StatusCode;
 use futures::future::try_join_all;
+use rustypub::extended::Actor;
 use serde::Serialize;
 use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 use tracing::trace;
@@ -132,11 +128,16 @@ impl Db {
     pub fn inboxes_for_actor(&self, actor: &Actor, object_id: &str) -> Result<Vec<String>> {
         let origin_host = host_from_uri(object_id)?;
 
+        let actor_inbox = actor.inbox.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::NOT_FOUND,
+            message: "actor has no inbox",
+        })?;
+
         let inboxes = self
             .inboxes
             .read()
             .iter()
-            .filter(|&(host, inbox)| inbox != &actor.inbox && host != &origin_host)
+            .filter(|&(host, inbox)| inbox != actor_inbox && host != &origin_host)
             .map(|(_, inbox)| inbox.to_owned())
             .collect();
 
