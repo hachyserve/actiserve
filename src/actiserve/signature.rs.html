@@ -287,7 +287,21 @@
 <span id="287">287</span>
 <span id="288">288</span>
 <span id="289">289</span>
-</pre><pre class="rust"><code><span class="kw">use crate</span>::{client::Actor, Error, <span class="prelude-ty">Result</span>};
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+</pre><pre class="rust"><code><span class="kw">use crate</span>::{Error, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>axum::http::{HeaderMap, Uri};
 <span class="kw">use </span>chrono::Utc;
 <span class="kw">use </span>itertools::Itertools;
@@ -297,6 +311,7 @@
     signature::{RandomizedSigner, Signature <span class="kw">as _</span>, Verifier},
     RsaPublicKey,
 };
+<span class="kw">use </span>rustypub::extended::Actor;
 <span class="kw">use </span>sha2::{Digest, Sha256, Sha512};
 <span class="kw">use </span>std::{collections::HashMap, convert::TryInto};
 <span class="kw">use </span>tracing::debug;
@@ -487,6 +502,7 @@
         pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey},
         RsaPrivateKey,
     };
+    <span class="kw">use </span>rustypub::extended::{ActorBuilder, PublicKeyInfo};
 
     <span class="comment">// A valid but low bit size private key for use in running unit tests
     // without needing to generate one on demand.
@@ -563,6 +579,18 @@ JHDXEfYsCzSikhI33KHhsxu0yf168jlNorlgT8Yzax2y5QkpqbtFAgMBAAE=
         <span class="macro">assert!</span>(res.is_ok())
     }
 
+    <span class="kw">pub fn </span>test_actor(id: <span class="kw-2">&amp;</span>str) -&gt; Actor {
+        ActorBuilder::new(<span class="string">&quot;test_actor&quot;</span>.to_owned())
+            .id(id.parse::&lt;Uri&gt;().unwrap())
+            .inbox(<span class="string">&quot;https://example.com/inbox&quot;</span>.to_owned())
+            .public_key_info(PublicKeyInfo {
+                id: id.to_owned(),
+                owner: <span class="string">&quot;self&quot;</span>.to_owned(),
+                public_key_pem: TEST_PUB_KEY.to_owned(),
+            })
+            .build()
+    }
+
     <span class="attribute">#[test]
     </span><span class="kw">fn </span>we_can_verify_our_own_signatures() {
         <span class="kw">let </span>uri = <span class="string">&quot;https://example.com/inbox&quot;</span>;
@@ -570,7 +598,7 @@ JHDXEfYsCzSikhI33KHhsxu0yf168jlNorlgT8Yzax2y5QkpqbtFAgMBAAE=
         <span class="kw">let </span>headers = sign_test_req(uri, data);
 
         <span class="comment">// Will provide the TEST_PUB_KEY public key for verification
-        </span><span class="kw">let </span>actor = Actor::test_actor(<span class="string">&quot;https://example.com/actor&quot;</span>);
+        </span><span class="kw">let </span>actor = test_actor(<span class="string">&quot;https://example.com/actor&quot;</span>);
 
         <span class="kw">let </span>res = validate_signature(<span class="kw-2">&amp;</span>actor, <span class="string">&quot;post&quot;</span>, <span class="string">&quot;/inbox&quot;</span>, <span class="kw-2">&amp;</span>headers);
         <span class="macro">assert_eq!</span>(res, <span class="prelude-val">Ok</span>(()));

@@ -95,6 +95,14 @@
 <span id="95">95</span>
 <span id="96">96</span>
 <span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
 </pre><pre class="rust"><code><span class="kw">use </span>axum::{
     extract::Json,
     http::StatusCode,
@@ -137,6 +145,9 @@
         status: StatusCode,
         message: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
     },
+
+    <span class="attribute">#[error(transparent)]
+    </span>RsaPksc1Error(<span class="attribute">#[from] </span>rsa::pkcs1::Error),
 }
 
 <span class="kw">impl </span>IntoResponse <span class="kw">for </span>Error {
@@ -187,6 +198,11 @@
             MissingSignature =&gt; (StatusCode::UNAUTHORIZED, Json(<span class="macro">json!</span>({ <span class="string">&quot;error&quot;</span>: error }))),
 
             StatusAndMessage { status, message } =&gt; (status, Json(<span class="macro">json!</span>({ <span class="string">&quot;error&quot;</span>: message }))),
+
+            RsaPksc1Error(inner) =&gt; (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(<span class="macro">json!</span>({ <span class="string">&quot;error&quot;</span>: inner.to_string() })),
+            ),
         };
 
         (status, data).into_response()

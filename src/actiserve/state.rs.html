@@ -175,16 +175,13 @@
 <span id="175">175</span>
 <span id="176">176</span>
 <span id="177">177</span>
+<span id="178">178</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Server shared state
-</span><span class="kw">use crate</span>::{
-    client::{ActivityPubClient, Actor},
-    config::Config,
-    util::host_from_uri,
-    Error, <span class="prelude-ty">Result</span>,
-};
+</span><span class="kw">use crate</span>::{client::ActivityPubClient, config::Config, util::host_from_uri, Error, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>acidjson::AcidJson;
 <span class="kw">use </span>axum::http::StatusCode;
 <span class="kw">use </span>futures::future::try_join_all;
+<span class="kw">use </span>rustypub::extended::Actor;
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>std::{collections::HashMap, path::PathBuf, sync::Mutex};
 <span class="kw">use </span>tracing::trace;
@@ -309,11 +306,16 @@
     <span class="kw">pub fn </span>inboxes_for_actor(<span class="kw-2">&amp;</span><span class="self">self</span>, actor: <span class="kw-2">&amp;</span>Actor, object_id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;&gt; {
         <span class="kw">let </span>origin_host = host_from_uri(object_id)<span class="question-mark">?</span>;
 
+        <span class="kw">let </span>actor_inbox = actor.inbox.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::NOT_FOUND,
+            message: <span class="string">&quot;actor has no inbox&quot;</span>,
+        })<span class="question-mark">?</span>;
+
         <span class="kw">let </span>inboxes = <span class="self">self
             </span>.inboxes
             .read()
             .iter()
-            .filter(|<span class="kw-2">&amp;</span>(host, inbox)| inbox != <span class="kw-2">&amp;</span>actor.inbox &amp;&amp; host != <span class="kw-2">&amp;</span>origin_host)
+            .filter(|<span class="kw-2">&amp;</span>(host, inbox)| inbox != actor_inbox &amp;&amp; host != <span class="kw-2">&amp;</span>origin_host)
             .map(|(<span class="kw">_</span>, inbox)| inbox.to_owned())
             .collect();
 

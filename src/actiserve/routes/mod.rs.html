@@ -51,15 +51,21 @@
 <span id="51">51</span>
 <span id="52">52</span>
 <span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Routes available on this server.
 //!
 //! We are implementing a subset of the activitypub API in order to function as a relay
-</span><span class="kw">use crate</span>::{client::Context, state::State};
+
+</span><span class="kw">use </span><span class="kw">crate</span>::state::State;
+
 <span class="kw">use </span>axum::{
     extract::Host,
     routing::{get, post},
     Extension, Router,
 };
+<span class="kw">use </span>rustypub::core::ContextBuilder;
 <span class="kw">use </span>serde_json::{json, Value};
 <span class="kw">use </span>std::sync::Arc;
 
@@ -84,7 +90,7 @@
     Extension(state): Extension&lt;Arc&lt;State&gt;&gt;,
 ) -&gt; extractors::Activity&lt;Value&gt; {
     extractors::Activity(<span class="macro">json!</span>({
-        <span class="string">&quot;@context&quot;</span>: Context::default(),
+        <span class="string">&quot;@context&quot;</span>: ContextBuilder::default().build(),
         <span class="string">&quot;endpoints&quot;</span>: {
             <span class="string">&quot;sharedInbox&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;https://{host}/inbox&quot;</span>),
         },

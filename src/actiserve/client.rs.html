@@ -230,93 +230,19 @@
 <span id="230">230</span>
 <span id="231">231</span>
 <span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
-<span id="242">242</span>
-<span id="243">243</span>
-<span id="244">244</span>
-<span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
-<span id="252">252</span>
-<span id="253">253</span>
-<span id="254">254</span>
-<span id="255">255</span>
-<span id="256">256</span>
-<span id="257">257</span>
-<span id="258">258</span>
-<span id="259">259</span>
-<span id="260">260</span>
-<span id="261">261</span>
-<span id="262">262</span>
-<span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
 </pre><pre class="rust"><code><span class="doccomment">//! A simple API client for making activitypub related requests
 </span><span class="kw">use crate</span>::{signature::sign_request_headers, util::header_val, Error, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>reqwest::{header, Client, Response, StatusCode};
 <span class="kw">use </span>rsa::{
-    pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey, EncodeRsaPublicKey, LineEnding},
+    pkcs1::{DecodeRsaPrivateKey, EncodeRsaPublicKey, LineEnding},
     pkcs1v15::SigningKey,
     RsaPrivateKey, RsaPublicKey,
 };
-<span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
+<span class="kw">use </span>rustypub::{
+    core::{ActivityBuilder, ObjectBuilder},
+    extended::{Actor, ActorBuilder},
+};
+<span class="kw">use </span>serde::{de::DeserializeOwned, Serialize};
 <span class="kw">use </span>sha2::Sha256;
 <span class="kw">use </span>tracing::{error, info};
 <span class="kw">use </span>uuid::Uuid;
@@ -407,47 +333,102 @@
     }
 
     <span class="kw">pub async fn </span>follow_actor(<span class="kw-2">&amp;</span><span class="self">self</span>, actor_uri: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>Actor { id, inbox, .. } = <span class="self">self</span>.get_actor(actor_uri).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>base = <span class="kw-2">&amp;</span><span class="self">self</span>.base;
-        <span class="macro">info!</span>(%id, %inbox, <span class="string">&quot;sending follow request to inbox&quot;</span>);
+        <span class="kw">let </span>actor: Actor = <span class="self">self</span>.get_actor(actor_uri).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: <span class="string">&quot;actor has no id&quot;</span>,
+        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>actor_inbox = actor.inbox.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: <span class="string">&quot;actor has no id&quot;</span>,
+        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>id = actor_id
+            .parse::&lt;http::Uri&gt;()
+            .map_err(|_e| Error::InvalidUri {
+                uri: actor_id.clone(),
+            })<span class="question-mark">?</span>;
+        <span class="macro">info!</span>(<span class="question-mark">?</span>id, inbox=<span class="question-mark">?</span>actor_inbox, <span class="string">&quot;sending follow request to inbox&quot;</span>);
 
         <span class="kw">let </span>message_id = Uuid::new_v4();
-        <span class="kw">let </span>message = Activity {
-            context: Context::default(),
-            ty: ActivityType::Follow,
-            to: <span class="macro">vec!</span>[id.clone()],
-            object: IdOrObject::Id(id),
-            id: <span class="macro">format!</span>(<span class="string">&quot;https://{base}/activities/{message_id}&quot;</span>),
-            actor: <span class="macro">format!</span>(<span class="string">&quot;https://{base}/actor)&quot;</span>),
-        };
+        <span class="kw">let </span>message_id_uri = <span class="macro">format!</span>(<span class="string">&quot;https://{base}/activities/{message_id}&quot;</span>);
+        <span class="kw">let </span>actor_uri = <span class="macro">format!</span>(<span class="string">&quot;https://{base}/actor&quot;</span>);
+        <span class="kw">let </span>message = ActivityBuilder::new(String::from(<span class="string">&quot;Follow&quot;</span>), String::from(<span class="string">&quot;Following actor&quot;</span>))
+            .actor(
+                ActorBuilder::new(String::from(<span class="string">&quot;Actor&quot;</span>)).url(
+                    actor_uri
+                        .parse::&lt;http::Uri&gt;()
+                        .map_err(|_e| Error::InvalidUri { uri: actor_uri })<span class="question-mark">?</span>,
+                ),
+            )
+            .to(<span class="macro">vec!</span>[actor_id.clone()])
+            .object(ObjectBuilder::new().id(id))
+            .id(message_id_uri
+                .parse::&lt;http::Uri&gt;()
+                .map_err(|_e| Error::InvalidUri {
+                    uri: message_id_uri,
+                })<span class="question-mark">?</span>)
+            .build();
 
-        <span class="self">self</span>.json_post(inbox, message).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="self">self</span>.json_post(actor_inbox, message).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">pub async fn </span>unfollow_actor(<span class="kw-2">&amp;</span><span class="self">self</span>, actor_uri: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>Actor { id, inbox, .. } = <span class="self">self</span>.get_actor(actor_uri).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">let </span>base = <span class="kw-2">&amp;</span><span class="self">self</span>.base;
-        <span class="macro">info!</span>(%id, %inbox, <span class="string">&quot;sending unfollow request to inbox&quot;</span>);
+        <span class="kw">let </span>actor: Actor = <span class="self">self</span>.get_actor(actor_uri).<span class="kw">await</span><span class="question-mark">?</span>;
+
+        <span class="kw">let </span>actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: <span class="string">&quot;actor has no id&quot;</span>,
+        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>actor_inbox = actor.inbox.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: <span class="string">&quot;actor has no inbox&quot;</span>,
+        })<span class="question-mark">?</span>;
+
+        <span class="macro">info!</span>(%actor_id, %actor_inbox, <span class="string">&quot;sending unfollow request to inbox&quot;</span>);
 
         <span class="kw">let </span>object_id = Uuid::new_v4();
         <span class="kw">let </span>message_id = Uuid::new_v4();
-        <span class="kw">let </span>message = Activity {
-            context: Context::default(),
-            ty: ActivityType::Undo,
-            to: <span class="macro">vec!</span>[actor_uri.to_owned()],
-            object: IdOrObject::Object {
-                ty: ActivityType::Follow,
-                object: actor_uri.to_owned(),
-                actor: actor_uri.to_owned(),
-                id: <span class="macro">format!</span>(<span class="string">&quot;https://{base}/activities/{object_id}&quot;</span>),
-            },
-            id: <span class="macro">format!</span>(<span class="string">&quot;https://{base}/activities/{message_id}&quot;</span>),
-            actor: <span class="macro">format!</span>(<span class="string">&quot;https://{base}/actor)&quot;</span>),
-        };
+        <span class="kw">let </span>activity_id = <span class="macro">format!</span>(<span class="string">&quot;https://{base}/activities/{message_id}&quot;</span>);
+        <span class="kw">let </span>activity_id_uri = activity_id
+            .parse::&lt;http::Uri&gt;()
+            .map_err(|_e| Error::InvalidUri { uri: activity_id })<span class="question-mark">?</span>;
+        <span class="kw">let </span>object_id = <span class="macro">format!</span>(<span class="string">&quot;https://{base}/activities/{object_id}&quot;</span>);
+        <span class="kw">let </span>object_id_uri = object_id
+            .parse::&lt;http::Uri&gt;()
+            .map_err(|_e| Error::InvalidUri { uri: object_id })<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.json_post(inbox, message).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let </span>message = ActivityBuilder::new(String::from(<span class="string">&quot;Undo&quot;</span>), String::from(<span class="string">&quot;Unfollow actor&quot;</span>))
+            .actor(
+                ActorBuilder::new(String::from(<span class="string">&quot;Actor&quot;</span>)).url(
+                    <span class="macro">format!</span>(<span class="string">&quot;https://{base}/actor&quot;</span>)
+                        .parse::&lt;http::Uri&gt;()
+                        .map_err(|_e| Error::InvalidUri {
+                            uri: <span class="macro">format!</span>(<span class="string">&quot;https://{base}/actor&quot;</span>),
+                        })<span class="question-mark">?</span>,
+                ),
+            )
+            .to(<span class="macro">vec!</span>[actor_uri.to_owned()])
+            .object(
+                <span class="comment">// FIXME: object does not have a property &quot;actor&quot;:
+                // https://www.w3.org/TR/activitystreams-vocabulary/#types
+                // .actor
+                // object does not have a property &quot;object&quot;:
+                // https://www.w3.org/TR/activitystreams-vocabulary/#types
+                // .object
+                // note that the relay we copied from was not entirely correct so
+                // we need to reevaluate these payloads anyway.
+                </span>ObjectBuilder::new()
+                    .object_type(String::from(<span class="string">&quot;Follow&quot;</span>))
+                    .id(object_id_uri),
+            )
+            .id(activity_id_uri)
+            .build();
+
+        <span class="self">self</span>.json_post(actor_inbox, message).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -470,152 +451,15 @@
     RsaPrivateKey::new(<span class="kw-2">&amp;mut </span>rand::thread_rng(), KEY_LEN).expect(<span class="string">&quot;failed to generate a key&quot;</span>)
 }
 
-<span class="comment">// NOTE: A subset of the rustypub Actor&lt;&#39;a&gt; struct that can implement DeserializeOwned
-</span><span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = <span class="string">&quot;camelCase&quot;</span>)]
-</span><span class="kw">pub struct </span>Actor {
-    <span class="kw">pub </span>id: String,
-    <span class="kw">pub </span>inbox: String,
-    <span class="attribute">#[serde(rename = <span class="string">&quot;publicKey&quot;</span>)]
-    </span><span class="kw">pub </span>public_key_info: PublickKeyInfo,
-}
-
-<span class="kw">impl </span>Actor {
-    <span class="kw">pub fn </span>key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;RsaPublicKey&gt; {
-        RsaPublicKey::from_pkcs1_pem(<span class="kw-2">&amp;</span><span class="self">self</span>.public_key_info.public_key_pem).map_err(|e| {
-            Error::InvalidPublicKey {
-                error: e.to_string(),
-            }
-        })
-    }
-}
-
-<span class="attribute">#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = <span class="string">&quot;camelCase&quot;</span>)]
-</span><span class="kw">pub struct </span>PublickKeyInfo {
-    id: String,
-    owner: String,
-    public_key_pem: String,
-}
-
-<span class="attribute">#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-</span><span class="kw">pub enum </span>ActivityType {
-    Accept,
-    Announce,
-    Create,
-    Delete,
-    Follow,
-    Undo,
-    Update,
-}
-
-<span class="comment">// FIXME: according to the spec this can also be an object or an array of a string and (one or more?) object(s)?
-</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
-</span><span class="kw">pub struct </span>Context(String);
-
-<span class="kw">impl </span>Default <span class="kw">for </span>Context {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>(<span class="string">&quot;https://www.w3.org/ns/activitystreams&quot;</span>.to_owned())
-    }
-}
-
-<span class="comment">// Not a full implementation of an activitypub Activity: just enough for our purposes
-</span><span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-</span><span class="kw">pub struct </span>Activity {
-    <span class="attribute">#[serde(rename = <span class="string">&quot;@context&quot;</span>)]
-    </span><span class="kw">pub </span>context: Context,
-    <span class="attribute">#[serde(rename = <span class="string">&quot;type&quot;</span>)]
-    </span><span class="kw">pub </span>ty: ActivityType,
-    <span class="kw">pub </span>to: Vec&lt;String&gt;,
-    <span class="kw">pub </span>actor: String,
-    <span class="kw">pub </span>object: IdOrObject,
-    <span class="kw">pub </span>id: String,
-}
-
-<span class="attribute">#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
-</span><span class="kw">pub enum </span>IdOrObject {
-    Id(String),
-
-    Object {
-        <span class="attribute">#[serde(rename = <span class="string">&quot;type&quot;</span>)]
-        </span>ty: ActivityType,
-        id: String,
-        actor: String,
-        object: String,
-    },
-}
-
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span><span class="kw">crate</span>::signature::tests::{TEST_PRIV_KEY, TEST_PUB_KEY};
-    <span class="kw">use </span>serde_json::json;
+    <span class="kw">use </span><span class="kw">crate</span>::signature::tests::TEST_PRIV_KEY;
 
     <span class="kw">impl </span>ActivityPubClient {
         <span class="kw">pub fn </span>new_with_test_key() -&gt; <span class="self">Self </span>{
             <span class="self">Self</span>::new_with_priv_key(TEST_PRIV_KEY, <span class="string">&quot;127.0.0.1:4242&quot;</span>.to_string())
         }
-    }
-
-    <span class="kw">impl </span>Actor {
-        <span class="kw">pub fn </span>test_actor(id: <span class="kw-2">&amp;</span>str) -&gt; <span class="self">Self </span>{
-            <span class="self">Self </span>{
-                id: id.to_owned(),
-                inbox: <span class="string">&quot;https://example.com/inbox&quot;</span>.to_owned(),
-                public_key_info: PublickKeyInfo {
-                    id: id.to_owned(),
-                    owner: <span class="string">&quot;self&quot;</span>.to_owned(),
-                    public_key_pem: TEST_PUB_KEY.to_owned(),
-                },
-            }
-        }
-    }
-
-    <span class="kw">const </span>ID: <span class="kw-2">&amp;</span>str = <span class="string">&quot;foo&quot;</span>;
-    <span class="kw">const </span>MESSAGE_ID: <span class="kw-2">&amp;</span>str = <span class="string">&quot;https://example.com/activities/message_id&quot;</span>;
-    <span class="kw">const </span>ACTOR: <span class="kw-2">&amp;</span>str = <span class="string">&quot;https://example.com/actor&quot;</span>;
-
-    <span class="attribute">#[test]
-    </span><span class="kw">fn </span>activity_serialises_with_id() {
-        <span class="kw">let </span>raw = <span class="macro">json!</span>({
-            <span class="string">&quot;@context&quot;</span>: <span class="string">&quot;https://www.w3.org/ns/activitystreams&quot;</span>,
-            <span class="string">&quot;type&quot;</span>: <span class="string">&quot;Follow&quot;</span>,
-            <span class="string">&quot;to&quot;</span>: [ID],
-            <span class="string">&quot;object&quot;</span>: ID,
-            <span class="string">&quot;id&quot;</span>: MESSAGE_ID,
-            <span class="string">&quot;actor&quot;</span>: ACTOR,
-        });
-
-        <span class="kw">let </span>deserialized = serde_json::from_value::&lt;Activity&gt;(raw.clone());
-        <span class="macro">assert!</span>(deserialized.is_ok());
-
-        <span class="kw">let </span>serialized = serde_json::to_value(<span class="kw-2">&amp;</span>deserialized.unwrap()).expect(<span class="string">&quot;to serialize&quot;</span>);
-        <span class="macro">assert_eq!</span>(serialized, raw);
-    }
-
-    <span class="attribute">#[test]
-    </span><span class="kw">fn </span>activity_serialises_with_object() {
-        <span class="kw">let </span>raw = <span class="macro">json!</span>({
-            <span class="string">&quot;@context&quot;</span>: <span class="string">&quot;https://www.w3.org/ns/activitystreams&quot;</span>,
-            <span class="string">&quot;type&quot;</span>: <span class="string">&quot;Follow&quot;</span>,
-            <span class="string">&quot;to&quot;</span>: [ID],
-            <span class="string">&quot;object&quot;</span>: {
-              <span class="string">&quot;type&quot;</span>: <span class="string">&quot;Follow&quot;</span>,
-              <span class="string">&quot;object&quot;</span>: ACTOR,
-              <span class="string">&quot;actor&quot;</span>: ACTOR,
-              <span class="string">&quot;id&quot;</span>: ID
-            },
-            <span class="string">&quot;id&quot;</span>: MESSAGE_ID,
-            <span class="string">&quot;actor&quot;</span>: ACTOR,
-        });
-
-        <span class="kw">let </span>deserialized = serde_json::from_value::&lt;Activity&gt;(raw.clone());
-        <span class="macro">assert!</span>(deserialized.is_ok());
-
-        <span class="kw">let </span>serialized = serde_json::to_value(<span class="kw-2">&amp;</span>deserialized.unwrap()).expect(<span class="string">&quot;to serialize&quot;</span>);
-        <span class="macro">assert_eq!</span>(serialized, raw);
     }
 }
 </code></pre></div>

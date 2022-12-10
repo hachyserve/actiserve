@@ -266,8 +266,42 @@
 <span id="266">266</span>
 <span id="267">267</span>
 <span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
-    client::{Activity, ActivityType, Actor, IdOrObject},
     routes::extractors,
     signature::validate_signature,
     state::State,
@@ -278,6 +312,10 @@
     extract::{Extension, Host, Json, OriginalUri},
     http::{header::HeaderMap, StatusCode},
 };
+<span class="kw">use </span>rustypub::{
+    core::{ActivityBuilder, ObjectBuilder},
+    extended::{Actor, ActorBuilder},
+};
 <span class="kw">use </span>serde::Deserialize;
 <span class="kw">use </span>serde_json::{json, Value};
 <span class="kw">use </span>std::sync::Arc;
@@ -287,7 +325,7 @@
 <span class="attribute">#[derive(Debug, Deserialize)]
 </span><span class="kw">pub struct </span>InboxRequest {
     <span class="attribute">#[serde(rename = <span class="string">&quot;type&quot;</span>)]
-    </span>ty: ActivityType,
+    </span>ty: String,
     actor: String,
     activity: Value,
 }
@@ -300,30 +338,32 @@
     Extension(state): Extension&lt;Arc&lt;State&gt;&gt;,
     Json(req): Json&lt;InboxRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;extractors::Activity&lt;Value&gt;&gt; {
-    <span class="kw">use </span>ActivityType::<span class="kw-2">*</span>;
-
     <span class="kw">let </span>actor = state.client.get_actor(<span class="kw-2">&amp;</span>req.actor).<span class="kw">await</span><span class="question-mark">?</span>;
 
     validate_signature(<span class="kw-2">&amp;</span>actor, <span class="string">&quot;post&quot;</span>, uri.path(), <span class="kw-2">&amp;</span>headers)<span class="question-mark">?</span>;
-    validate_request(<span class="kw-2">&amp;</span>actor, req.ty, <span class="kw-2">&amp;</span>state).<span class="kw">await</span><span class="question-mark">?</span>;
+    validate_request(<span class="kw-2">&amp;</span>actor, <span class="kw-2">&amp;</span>req.ty, <span class="kw-2">&amp;</span>state).<span class="kw">await</span><span class="question-mark">?</span>;
 
-    <span class="kw">match </span>req.ty {
-        Announce | Create =&gt; handle_relay(<span class="kw-2">&amp;</span>actor, req.activity, <span class="kw-2">&amp;</span>host, state).<span class="kw">await</span><span class="question-mark">?</span>,
-        Delete | Update =&gt; handle_forward(<span class="kw-2">&amp;</span>actor, req.activity, state).<span class="kw">await</span><span class="question-mark">?</span>,
-        Follow =&gt; handle_follow(<span class="kw-2">&amp;</span>actor, req.activity, <span class="kw-2">&amp;</span>host, state).<span class="kw">await</span><span class="question-mark">?</span>,
-        Undo =&gt; handle_undo(<span class="kw-2">&amp;</span>actor, req.activity, state).<span class="kw">await</span><span class="question-mark">?</span>,
+    <span class="kw">match </span>req.ty.as_str() {
+        <span class="string">&quot;Announce&quot; </span>| <span class="string">&quot;Create&quot; </span>=&gt; handle_relay(<span class="kw-2">&amp;</span>actor, req.activity, <span class="kw-2">&amp;</span>host, state).<span class="kw">await</span><span class="question-mark">?</span>,
+        <span class="string">&quot;Delete&quot; </span>| <span class="string">&quot;Update&quot; </span>=&gt; handle_forward(<span class="kw-2">&amp;</span>actor, req.activity, state).<span class="kw">await</span><span class="question-mark">?</span>,
+        <span class="string">&quot;Follow&quot; </span>=&gt; handle_follow(<span class="kw-2">&amp;</span>actor, req.activity, <span class="kw-2">&amp;</span>host, state).<span class="kw">await</span><span class="question-mark">?</span>,
+        <span class="string">&quot;Undo&quot; </span>=&gt; handle_undo(<span class="kw-2">&amp;</span>actor, req.activity, state).<span class="kw">await</span><span class="question-mark">?</span>,
         <span class="kw">_ </span>=&gt; (),
     };
 
     <span class="prelude-val">Ok</span>(extractors::Activity(<span class="macro">json!</span>({})))
 }
 
-<span class="kw">async fn </span>validate_request(actor: <span class="kw-2">&amp;</span>Actor, ty: ActivityType, state: <span class="kw-2">&amp;</span>State) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<span class="kw">async fn </span>validate_request(actor: <span class="kw-2">&amp;</span>Actor, ty: <span class="kw-2">&amp;</span>str, state: <span class="kw-2">&amp;</span>State) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="comment">// TODO: reject the request based on config (block list, banned actors / software etc)
+    </span><span class="kw">let </span>actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: <span class="string">&quot;actor has no id&quot;</span>,
+    })<span class="question-mark">?</span>;
 
-    </span><span class="kw">let </span>actor_domain = host_from_uri(<span class="kw-2">&amp;</span>actor.id)<span class="question-mark">?</span>;
-    <span class="kw">if </span>ty != ActivityType::Follow &amp;&amp; state.db.inbox(<span class="kw-2">&amp;</span>actor_domain).is_none() {
-        <span class="macro">info!</span>(actor=%actor.id, <span class="string">&quot;rejecting actor for trying to POST without following&quot;</span>);
+    <span class="kw">let </span>actor_domain = host_from_uri(actor_id)<span class="question-mark">?</span>;
+    <span class="kw">if </span>ty != <span class="string">&quot;Follow&quot; </span>&amp;&amp; state.db.inbox(<span class="kw-2">&amp;</span>actor_domain).is_none() {
+        <span class="macro">info!</span>(actor=%actor_id, <span class="string">&quot;rejecting actor for trying to POST without following&quot;</span>);
         <span class="kw">return </span><span class="prelude-val">Err</span>(Error::StatusAndMessage {
             status: StatusCode::UNAUTHORIZED,
             message: <span class="string">&quot;access denied&quot;</span>,
@@ -336,22 +376,44 @@
 <span class="attribute">#[tracing::instrument(level = <span class="string">&quot;info&quot;</span>, skip(state, activity), err)]
 </span><span class="kw">async fn </span>handle_relay(actor: <span class="kw-2">&amp;</span>Actor, activity: Value, host: <span class="kw-2">&amp;</span>str, state: Arc&lt;State&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span>object_id = id_from_json(<span class="kw-2">&amp;</span>activity);
+    <span class="kw">let </span>object_id_uri = <span class="kw-2">&amp;</span>object_id
+        .parse::&lt;http::Uri&gt;()
+        .map_err(|_e| Error::InvalidUri {
+            uri: object_id.clone(),
+        })<span class="question-mark">?</span>;
+    <span class="kw">let </span>actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: <span class="string">&quot;actor has no id&quot;</span>,
+    })<span class="question-mark">?</span>;
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(activity_id) = state.get_from_cache(<span class="kw-2">&amp;</span>object_id) {
         <span class="macro">info!</span>(%object_id, %activity_id, <span class="string">&quot;ID has already been relayed&quot;</span>);
         <span class="kw">return </span><span class="prelude-val">Ok</span>(());
     }
 
-    <span class="macro">info!</span>(id=%actor.id, <span class="string">&quot;relaying post from actor&quot;</span>);
+    <span class="macro">info!</span>(id=%actor_id, <span class="string">&quot;relaying post from actor&quot;</span>);
     <span class="kw">let </span>activity_id = <span class="macro">format!</span>(<span class="string">&quot;https://{host}/activities/{}&quot;</span>, Uuid::new_v4());
-    <span class="kw">let </span>message = Activity {
-        context: Default::default(),
-        ty: ActivityType::Announce,
-        to: <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;https://{host}/followers&quot;</span>)],
-        object: IdOrObject::Id(object_id.clone()),
-        id: activity_id.clone(),
-        actor: <span class="macro">format!</span>(<span class="string">&quot;https://{host}/actor)&quot;</span>),
-    };
+    <span class="kw">let </span>activity_id_uri = <span class="kw-2">&amp;</span>activity_id
+        .parse::&lt;http::Uri&gt;()
+        .map_err(|_e| Error::InvalidUri {
+            uri: activity_id.clone(),
+        })<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>actor_uri = <span class="macro">format!</span>(<span class="string">&quot;https://{host}/actor&quot;</span>)
+        .parse::&lt;http::Uri&gt;()
+        .map_err(|_e| Error::InvalidUri {
+            uri: <span class="macro">format!</span>(<span class="string">&quot;https://{host}/actor&quot;</span>),
+        })<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>message = ActivityBuilder::new(
+        String::from(<span class="string">&quot;Announce&quot;</span>),
+        String::from(<span class="string">&quot;announcing post from actor&quot;</span>),
+    )
+    .to(<span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;https://{host}/followers&quot;</span>)])
+    .id(activity_id_uri.clone())
+    .actor(ActorBuilder::new(String::from(<span class="string">&quot;Actor&quot;</span>)).url(actor_uri))
+    .object(ObjectBuilder::new().id(object_id_uri.clone()))
+    .build();
 
     <span class="macro">debug!</span>(<span class="question-mark">?</span>message, <span class="string">&quot;relaying message&quot;</span>);
     state
@@ -368,7 +430,12 @@
         <span class="kw">return </span><span class="prelude-val">Ok</span>(());
     }
 
-    <span class="macro">info!</span>(%actor.id, <span class="string">&quot;forwarding post&quot;</span>);
+    <span class="kw">let </span>actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: <span class="string">&quot;actor has no id&quot;</span>,
+    })<span class="question-mark">?</span>;
+
+    <span class="macro">info!</span>(%actor_id, <span class="string">&quot;forwarding post&quot;</span>);
     state
         .post_for_actor(actor, object_id.clone(), object_id, activity)
         .<span class="kw">await
@@ -376,15 +443,19 @@
 
 <span class="attribute">#[tracing::instrument(level = <span class="string">&quot;info&quot;</span>, skip(state, activity), err)]
 </span><span class="kw">async fn </span>handle_follow(
-    Actor {
-        id: actor_id,
-        inbox,
-        ..
-    }: <span class="kw-2">&amp;</span>Actor,
+    actor: <span class="kw-2">&amp;</span>Actor,
     activity: Value,
     host: <span class="kw-2">&amp;</span>str,
     state: Arc&lt;State&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">let </span>actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: <span class="string">&quot;actor has no id&quot;</span>,
+    })<span class="question-mark">?</span>;
+    <span class="kw">let </span>inbox = actor.inbox.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: <span class="string">&quot;actor has no inbox&quot;</span>,
+    })<span class="question-mark">?</span>;
     <span class="kw">if </span>state.db.add_inbox_if_unknown(inbox.to_owned())<span class="question-mark">? </span>{
         <span class="comment">// New inbox so follow the remote actor
         </span>state.client.follow_actor(actor_id).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -394,19 +465,33 @@
     <span class="kw">let </span>object_id = id_from_json(<span class="kw-2">&amp;</span>activity);
     <span class="kw">let </span>message_id = Uuid::new_v4();
 
-    <span class="kw">let </span>message = Activity {
-        context: Default::default(),
-        ty: ActivityType::Accept,
-        to: <span class="macro">vec!</span>[actor_id.clone()],
-        object: IdOrObject::Object {
-            ty: ActivityType::Follow,
-            id: object_id,
-            object: our_actor.clone(),
-            actor: actor_id.clone(),
-        },
-        actor: our_actor,
-        id: <span class="macro">format!</span>(<span class="string">&quot;https://{host}/activities/{message_id}&quot;</span>),
-    };
+    <span class="kw">let </span>message = ActivityBuilder::new(String::from(<span class="string">&quot;Accept&quot;</span>), String::from(<span class="string">&quot;accepting follow&quot;</span>))
+        .to(<span class="macro">vec!</span>[actor_id.clone()])
+        .object(
+            <span class="comment">// FIXME: object does not have a property &quot;actor&quot;:
+            // https://www.w3.org/TR/activitystreams-vocabulary/#types
+            // .actor
+            // object does not have a property &quot;object&quot;:
+            // https://www.w3.org/TR/activitystreams-vocabulary/#types
+            // .object
+            </span>ObjectBuilder::new().id(object_id
+                .parse::&lt;http::Uri&gt;()
+                .map_err(|_e| Error::InvalidUri { uri: object_id })<span class="question-mark">?</span>),
+        )
+        .actor(
+            ActorBuilder::new(String::from(<span class="string">&quot;Actor&quot;</span>)).url(
+                our_actor
+                    .parse::&lt;http::Uri&gt;()
+                    .map_err(|_e| Error::InvalidUri { uri: our_actor })<span class="question-mark">?</span>,
+            ),
+        )
+        .id(<span class="macro">format!</span>(<span class="string">&quot;https://{host}/activities/{message_id}&quot;</span>)
+            .parse::&lt;http::Uri&gt;()
+            .map_err(|_e| Error::StatusAndMessage {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: <span class="string">&quot;failed to create parseable message id&quot;</span>,
+            })<span class="question-mark">?</span>)
+        .build();
 
     state.client.json_post(inbox, message).<span class="kw">await</span><span class="question-mark">?</span>;
 
@@ -425,10 +510,15 @@
         }
     };
 
+    <span class="kw">let </span>actor_id = actor.id.as_ref().ok_or(Error::StatusAndMessage {
+        status: StatusCode::BAD_REQUEST,
+        message: <span class="string">&quot;actor has no id&quot;</span>,
+    })<span class="question-mark">?</span>;
+
     <span class="kw">match </span>ty.as_ref() {
         <span class="string">&quot;Follow&quot; </span>=&gt; {
-            state.db.remove_inbox(<span class="kw-2">&amp;</span>actor.id)<span class="question-mark">?</span>;
-            state.client.unfollow_actor(<span class="kw-2">&amp;</span>actor.id).<span class="kw">await
+            state.db.remove_inbox(actor_id)<span class="question-mark">?</span>;
+            state.client.unfollow_actor(actor_id).<span class="kw">await
         </span>}
 
         <span class="string">&quot;Announce&quot; </span>=&gt; handle_forward(actor, activity, state).<span class="kw">await</span>,
@@ -440,42 +530,27 @@
 <span class="attribute">#[cfg(test)]
 </span><span class="kw">mod </span>validation_tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="kw">use </span><span class="kw">crate</span>::signature::tests::test_actor;
     <span class="kw">use </span><span class="kw">crate</span>::state::Db;
+
     <span class="kw">use </span>simple_test_case::test_case;
     <span class="kw">use </span>std::{env::temp_dir, fs::remove_dir_all};
 
-    <span class="attribute">#[tokio::test]
-    </span><span class="kw">async fn </span>invalid_actor_uri_is_an_error() {
-        <span class="kw">let </span><span class="kw-2">mut </span>dir = temp_dir();
-        dir.push(Uuid::new_v4().to_string());
-
-        <span class="kw">let </span>db = Db::new(dir.clone()).expect(<span class="string">&quot;unable to create database&quot;</span>);
-        <span class="kw">let </span>state = State::new_with_test_key(db);
-
-        <span class="kw">let </span>actor = <span class="string">&quot;example.com/without/scheme&quot;</span>.to_owned();
-        <span class="kw">let </span>res = validate_request(<span class="kw-2">&amp;</span>Actor::test_actor(<span class="kw-2">&amp;</span>actor), ActivityType::Create, <span class="kw-2">&amp;</span>state).<span class="kw">await</span>;
-
-        <span class="macro">assert_eq!</span>(res, <span class="prelude-val">Err</span>(Error::InvalidUri { uri: actor }));
-
-        state.clear();
-        remove_dir_all(dir).expect(<span class="string">&quot;to be able to clear up our temp directory&quot;</span>);
-    }
-
-    <span class="attribute">#[test_case(ActivityType::Accept; <span class="string">&quot;accept&quot;</span>)]
-    #[test_case(ActivityType::Announce; <span class="string">&quot;announce&quot;</span>)]
-    #[test_case(ActivityType::Create; <span class="string">&quot;create&quot;</span>)]
-    #[test_case(ActivityType::Delete; <span class="string">&quot;delete&quot;</span>)]
-    #[test_case(ActivityType::Undo; <span class="string">&quot;undo&quot;</span>)]
-    #[test_case(ActivityType::Update; <span class="string">&quot;update&quot;</span>)]
+    <span class="attribute">#[test_case(<span class="string">&quot;Accept&quot;</span>; <span class="string">&quot;accept&quot;</span>)]
+    #[test_case(<span class="string">&quot;Announce&quot;</span>; <span class="string">&quot;announce&quot;</span>)]
+    #[test_case(<span class="string">&quot;Create&quot;</span>; <span class="string">&quot;create&quot;</span>)]
+    #[test_case(<span class="string">&quot;Delete&quot;</span>; <span class="string">&quot;delete&quot;</span>)]
+    #[test_case(<span class="string">&quot;Undo&quot;</span>; <span class="string">&quot;undo&quot;</span>)]
+    #[test_case(<span class="string">&quot;Update&quot;</span>; <span class="string">&quot;update&quot;</span>)]
     #[tokio::test]
-    </span><span class="kw">async fn </span>non_follow_for_unknown_inbox_is_an_error(ty: ActivityType) {
+    </span><span class="kw">async fn </span>non_follow_for_unknown_inbox_is_an_error(ty: <span class="kw-2">&amp;</span>str) {
         <span class="kw">let </span><span class="kw-2">mut </span>dir = temp_dir();
         dir.push(Uuid::new_v4().to_string());
 
         <span class="kw">let </span>db = Db::new(dir.clone()).expect(<span class="string">&quot;unable to create database&quot;</span>);
         <span class="kw">let </span>state = State::new_with_test_key(db);
-        <span class="kw">let </span>res =
-            validate_request(<span class="kw-2">&amp;</span>Actor::test_actor(<span class="string">&quot;https://example.com/actor&quot;</span>), ty, <span class="kw-2">&amp;</span>state).<span class="kw">await</span>;
+        <span class="kw">let </span>res = validate_request(<span class="kw-2">&amp;</span>test_actor(<span class="string">&quot;https://example.com/actor&quot;</span>), ty, <span class="kw-2">&amp;</span>state).<span class="kw">await</span>;
 
         <span class="macro">assert_eq!</span>(
             res,
@@ -496,26 +571,22 @@
 
         <span class="kw">let </span>db = Db::new(dir.clone()).expect(<span class="string">&quot;unable to create database&quot;</span>);
         <span class="kw">let </span>state = State::new_with_test_key(db);
-        <span class="kw">let </span>res = validate_request(
-            <span class="kw-2">&amp;</span>Actor::test_actor(<span class="string">&quot;https://example.com/actor&quot;</span>),
-            ActivityType::Follow,
-            <span class="kw-2">&amp;</span>state,
-        )
-        .<span class="kw">await</span>;
+        <span class="kw">let </span>res =
+            validate_request(<span class="kw-2">&amp;</span>test_actor(<span class="string">&quot;https://example.com/actor&quot;</span>), <span class="string">&quot;Follow&quot;</span>, <span class="kw-2">&amp;</span>state).<span class="kw">await</span>;
 
         <span class="macro">assert_eq!</span>(res, <span class="prelude-val">Ok</span>(()));
         state.clear();
         remove_dir_all(dir).expect(<span class="string">&quot;to be able to clear up our temp directory&quot;</span>);
     }
 
-    <span class="attribute">#[test_case(ActivityType::Accept; <span class="string">&quot;accept&quot;</span>)]
-    #[test_case(ActivityType::Announce; <span class="string">&quot;announce&quot;</span>)]
-    #[test_case(ActivityType::Create; <span class="string">&quot;create&quot;</span>)]
-    #[test_case(ActivityType::Delete; <span class="string">&quot;delete&quot;</span>)]
-    #[test_case(ActivityType::Undo; <span class="string">&quot;undo&quot;</span>)]
-    #[test_case(ActivityType::Update; <span class="string">&quot;update&quot;</span>)]
+    <span class="attribute">#[test_case(<span class="string">&quot;Accept&quot;</span>; <span class="string">&quot;accept&quot;</span>)]
+    #[test_case(<span class="string">&quot;Announce&quot;</span>; <span class="string">&quot;announce&quot;</span>)]
+    #[test_case(<span class="string">&quot;Create&quot;</span>; <span class="string">&quot;create&quot;</span>)]
+    #[test_case(<span class="string">&quot;Delete&quot;</span>; <span class="string">&quot;delete&quot;</span>)]
+    #[test_case(<span class="string">&quot;Undo&quot;</span>; <span class="string">&quot;undo&quot;</span>)]
+    #[test_case(<span class="string">&quot;Update&quot;</span>; <span class="string">&quot;update&quot;</span>)]
     #[tokio::test]
-    </span><span class="kw">async fn </span>non_follow_for_known_inbox_is_ok(ty: ActivityType) {
+    </span><span class="kw">async fn </span>non_follow_for_known_inbox_is_ok(ty: <span class="kw-2">&amp;</span>str) {
         <span class="kw">let </span><span class="kw-2">mut </span>dir = temp_dir();
         dir.push(Uuid::new_v4().to_string());
 
@@ -526,8 +597,7 @@
             .add_inbox_if_unknown(<span class="string">&quot;https://example.com/actor&quot;</span>.to_owned())
             .unwrap();
 
-        <span class="kw">let </span>res =
-            validate_request(<span class="kw-2">&amp;</span>Actor::test_actor(<span class="string">&quot;https://example.com/actor&quot;</span>), ty, <span class="kw-2">&amp;</span>state).<span class="kw">await</span>;
+        <span class="kw">let </span>res = validate_request(<span class="kw-2">&amp;</span>test_actor(<span class="string">&quot;https://example.com/actor&quot;</span>), ty, <span class="kw-2">&amp;</span>state).<span class="kw">await</span>;
 
         <span class="macro">assert_eq!</span>(res, <span class="prelude-val">Ok</span>(()));
         state.clear();
