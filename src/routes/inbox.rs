@@ -50,6 +50,7 @@ pub async fn post(
 
     Ok(extractors::Activity(json!({})))
 }
+
 async fn validate_request(actor: &Actor, ty: &str, state: &State) -> Result<()> {
     // TODO: reject the request based on config (block list, banned actors / software etc)
     let actor_id = actor.id.as_ref().expect("actor has no id");
