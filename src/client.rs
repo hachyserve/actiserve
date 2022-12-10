@@ -107,15 +107,16 @@ impl ActivityPubClient {
             status: StatusCode::BAD_REQUEST,
             message: "actor has no id",
         })?;
+        let actor_inbox = actor.inbox.as_ref().ok_or(Error::StatusAndMessage {
+            status: StatusCode::BAD_REQUEST,
+            message: "actor has no id",
+        })?;
         let id = actor_id
             .parse::<http::Uri>()
             .map_err(|_e| Error::InvalidUri {
                 uri: actor_id.clone(),
             })?;
-        info!(
-            "sending follow request to inbox: {:?} {:?}",
-            id, actor.inbox
-        );
+        info!(?id, inbox=?actor_inbox, "sending follow request to inbox");
 
         let message_id = Uuid::new_v4();
         let message_id_uri = format!("https://{base}/activities/{message_id}");
@@ -128,7 +129,7 @@ impl ActivityPubClient {
                         .map_err(|_e| Error::InvalidUri { uri: actor_uri })?,
                 ),
             )
-            .to(vec![actor.id.as_ref().expect("actor has no id").clone()])
+            .to(vec![actor_id.clone()])
             .object(ObjectBuilder::new().id(id))
             .id(message_id_uri
                 .parse::<http::Uri>()
@@ -137,8 +138,7 @@ impl ActivityPubClient {
                 })?)
             .build();
 
-        self.json_post(actor.inbox.expect("actor has no inbox"), message)
-            .await?;
+        self.json_post(actor_inbox, message).await?;
 
         Ok(())
     }
@@ -180,6 +180,8 @@ impl ActivityPubClient {
                 // object does not have a property "object":
                 // https://www.w3.org/TR/activitystreams-vocabulary/#types
                 // .object
+                // note that the relay we copied from was not entirely correct so
+                // we need to reevaluate these payloads anyway.
                 ObjectBuilder::new()
                     .object_type(String::from("Follow"))
                     .id(object_id_uri),

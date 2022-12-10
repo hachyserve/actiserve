@@ -40,7 +40,7 @@ pub async fn post(
     validate_signature(&actor, "post", uri.path(), &headers)?;
     validate_request(&actor, &req.ty, &state).await?;
 
-    match &*req.ty {
+    match req.ty.as_str() {
         "Announce" | "Create" => handle_relay(&actor, req.activity, &host, state).await?,
         "Delete" | "Update" => handle_forward(&actor, req.activity, state).await?,
         "Follow" => handle_follow(&actor, req.activity, &host, state).await?,
