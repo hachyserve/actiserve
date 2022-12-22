@@ -1,2 +1,2 @@
 # actiserve
-an API server for rustypub
+a mastodon relay
