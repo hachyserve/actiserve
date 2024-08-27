@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":[["map",""]],"mod":[["client","A simple API client for making activitypub related requests"],["config",""],["error",""],["routes","Routes available on this server."],["signature",""],["state","Server shared state"],["util","Utility functions"]]};
+window.SIDEBAR_ITEMS = {"macro":["map"],"mod":["client","config","error","routes","signature","state","util"]};

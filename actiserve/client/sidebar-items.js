@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["ActivityPubClient",""]]};
+window.SIDEBAR_ITEMS = {"struct":["ActivityPubClient"]};

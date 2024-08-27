@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["sign_request_headers",""],["validate_signature",""]]};
+window.SIDEBAR_ITEMS = {"fn":["sign_request_headers","validate_signature"]};

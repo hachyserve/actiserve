@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["header_val",""],["host_from_uri",""],["id_from_json",""]]};
+window.SIDEBAR_ITEMS = {"fn":["header_val","host_from_uri","id_from_json"]};
